@@ -8,13 +8,53 @@ Nx, Ny = 128, 128
 
 grid = RectilinearGrid(size = (Nx, Ny), x = (0, Lx), y = (-Ly/2, Ly/2), topology = (Periodic, Bounded, Flat))
 
-u_forcing_func(x, y, t, A, h) = (1/h)*(∂x(A)*∂y(∂y(A)/h) - ∂y(A)*∂x(∂y(A)/h))
+using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ
+
+# Computes ∂x(A)/h
+function x_inner_func(i, j, k, grid, clock, fields)
+    return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A)/fields.h[i, j, k]
+end
+
+# Computes ∂y(A)/h
+function y_inner_func(i, j, k, grid, clock, fields)
+    return ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A)/fields.h[i, j, k]
+end
+
+# Computes the Jacobian of A and ∂x(A)/h, the x-component of the Jacobian
+function jacobian_x(i, j, k, grid, clock, fields)
+    return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, x_inner_func(i, j, k, grid, clock, fields)) 
+    - ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, x_inner_func(i, j, k, grid, clock, fields))
+end
+
+# Computes the Jacobian of A and ∂y(A)/h, the y-component of the Jacobian
+function jacobian_y(i, j, k, grid, clock, fields)
+    return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, y_inner_func(i, j, k, grid, clock, fields)) 
+    - ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, y_inner_func(i, j, k, grid, clock, fields))
+end
+
+# Computes the u-component forcing term; note that jacobian_y() is used because 
+# the cross product of -ẑ and ŷ is x̂
+function u_forcing_func(i, j, k, grid, clock, fields)
+    return (1/fields.h[i, j, k])*(jacobian_y(i, j, k, grid, clock, fields))
+end
+
+# Computes the v-component forcing term; note that jacobian_x() is used because
+# the cross product of -ẑ and x̂ is -ŷ
+function v_forcing_func(i, j, k, grid, clock, fields)
+    return (-1/fields.h[i, j, k])*(jacobian_x(i, j, k, grid, clock, fields))
+end
+
+u_forcing = Forcing(u_forcing_func, discrete_form = true)
+
+v_forcing = Forcing(v_forcing_func, discrete_form = true)
+
+#u_forcing_func(x, y, t, A, h) = (1/h)*(∂x(A)*∂y(∂y(A)/h) - ∂y(A)*∂x(∂y(A)/h))
                   
-v_forcing_func(x, y, t, A, h) = (1/h)*(∂x(A)*∂y(∂x(A)/h) - ∂y(A)*∂x(∂x(A)/h))
+#v_forcing_func(x, y, t, A, h) = (1/h)*(∂x(A)*∂y(∂x(A)/h) - ∂y(A)*∂x(∂x(A)/h))
 
-u_forcing = Forcing(u_forcing_func, field_dependencies = (:A, :h))
+#u_forcing = Forcing(u_forcing_func, field_dependencies = (:A, :h))
 
-v_forcing = Forcing(v_forcing_func, field_dependencies = (:A, :h))
+#v_forcing = Forcing(v_forcing_func, field_dependencies = (:A, :h))
 
 const U = 1.0         # Maximum jet velocity
 
@@ -32,6 +72,7 @@ model = ShallowWaterModel(
                           tracers = (:A),
                           forcing = (u = u_forcing, v = v_forcing),
                           formulation = VectorInvariantFormulation())
+
 
 h̄(x, y, z) = Lz - Δη * tanh(y)
 ū(x, y, z) = U * sech(y)^2
@@ -61,7 +102,7 @@ compute!(ω)
 
 set!(model, u = uⁱ)
 
-simulation = Simulation(model, Δt = 1e-2, stop_time = 150)
+simulation = Simulation(model, Δt = 1e-2, stop_time = 250)
 
 using LinearAlgebra: norm
 
@@ -79,7 +120,6 @@ simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_n
                                                         overwrite_existing = true)
 
 run!(simulation)
-
 
 using NCDatasets, Plots, Printf
 
