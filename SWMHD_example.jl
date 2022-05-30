@@ -8,6 +8,8 @@ Nx, Ny = 128, 128
 
 grid = RectilinearGrid(size = (Nx, Ny), x = (0, Lx), y = (-Ly/2, Ly/2), topology = (Periodic, Bounded, Flat))
 
+## Forcing functions for the SWMHD model
+
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ
 
 # Computes ∂x(A)/h
@@ -48,20 +50,15 @@ u_forcing = Forcing(u_forcing_func, discrete_form = true)
 
 v_forcing = Forcing(v_forcing_func, discrete_form = true)
 
-#u_forcing_func(x, y, t, A, h) = (1/h)*(∂x(A)*∂y(∂y(A)/h) - ∂y(A)*∂x(∂y(A)/h))
-                  
-#v_forcing_func(x, y, t, A, h) = (1/h)*(∂x(A)*∂y(∂x(A)/h) - ∂y(A)*∂x(∂x(A)/h))
-
-#u_forcing = Forcing(u_forcing_func, field_dependencies = (:A, :h))
-
-#v_forcing = Forcing(v_forcing_func, field_dependencies = (:A, :h))
+## Model parameters
 
 const U = 1.0         # Maximum jet velocity
 
-f = 1         # Coriolis parameter
-g = 9.8         # Gravitational acceleration
+f = 1000         # Coriolis parameter
+g = 10^-3         # Gravitational acceleration
 Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
 
+## Construction of SWMHD model
 
 model = ShallowWaterModel(
                           timestepper = :RungeKutta3,
@@ -73,6 +70,7 @@ model = ShallowWaterModel(
                           forcing = (u = u_forcing, v = v_forcing),
                           formulation = VectorInvariantFormulation())
 
+## Background state and perturbation
 
 h̄(x, y, z) = Lz - Δη * tanh(y)
 ū(x, y, z) = U * sech(y)^2
@@ -83,7 +81,7 @@ small_amplitude = 1e-4
 
 uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * randn()
 
-A_i(x, y, z) = -y + randn()
+A_i(x, y, z) = -500*y + 40*randn()
 
 set!(model, u = ū, h = h̄, A = A_i)
 
@@ -101,6 +99,8 @@ compute!(ω)
 ω′ = Field(ω - ωⁱ)
 
 set!(model, u = uⁱ)
+
+## Running the simulation
 
 simulation = Simulation(model, Δt = 1e-2, stop_time = 250)
 
@@ -121,8 +121,9 @@ simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_n
 
 run!(simulation)
 
-using NCDatasets, Plots, Printf
+## Visualizing the results
 
+using NCDatasets, Plots, Printf
 
 x, y = xnodes(ω), ynodes(ω)
 
