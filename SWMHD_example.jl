@@ -18,16 +18,17 @@ function y_derivative_func(i, j, k, grid, clock, fields)
     return ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A)/fields.h[i, j, k]
 end
 
-# Computes the Jacobian at cfc for the u-component forcing term
-function jacobian_y(i, j, k, grid, clock, fields)
-    return ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A) * ∂yᶜᶠᶜ(i, j, k, grid, x_derivative_func(i, j, k, grid, clock, fields))
-           - ∂yᶜᶠᶜ(i, j, k, grid, fields.A) * ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, x_derivative_func(i, j, k, grid, clock, fields))
-end
-
-# Computes the Jacobian at fcc for the v-component forcing term
+# Computes the Jacobian at fcc for the u-component forcing term
 function jacobian_x(i, j, k, grid, clock, fields)
     return ∂xᶠᶜᶜ(i, j, k, grid, fields.A) * ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, y_derivative_func(i, j, k, grid, clock, fields))
            - ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A) * ∂xᶠᶜᶜ(i, j, k, grid, y_derivative_func(i, j, k, grid, clock, fields))
+end
+
+
+# Computes the Jacobian at cfc for the v-component forcing term
+function jacobian_y(i, j, k, grid, clock, fields)
+    return ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A) * ∂yᶜᶠᶜ(i, j, k, grid, x_derivative_func(i, j, k, grid, clock, fields))
+           - ∂yᶜᶠᶜ(i, j, k, grid, fields.A) * ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, x_derivative_func(i, j, k, grid, clock, fields))
 end
 
 # Computes the u-component forcing term at fcc 
