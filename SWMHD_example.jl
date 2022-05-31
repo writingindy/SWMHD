@@ -1,45 +1,47 @@
 using Oceananigans
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
-using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ
+using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using NCDatasets, Plots, Printf
 
-# Computes ∂x(A)/h
+# Computes ∂x(A)/h at ccc
 # A and h are at centers, ccc
-# ∂x(A) is at fcc.
-# when we divide by h we need to interpolate h to fcc first
+# ∂x(A) is at fcc, and we interpolate it to ccc
 function x_derivative_func(i, j, k, grid, clock, fields)
-    return ℑxᶜᵃᵃ(i, j, k, grid, ᶠᶜᶜ, fields.A)/fields.h[i, j, k]
+    return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A)/fields.h[i, j, k]
 end
 
-# Computes ∂y(A)/h
+# Computes ∂y(A)/h at ccc
 # A and h are at centers, ccc
-# ∂y(A) is at cfc.
-# when we divide by h we need to interpolate h to cfc first
+# ∂y(A) is at cfc, and we interpolate it to ccc
 function y_derivative_func(i, j, k, grid, clock, fields)
     return ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A)/fields.h[i, j, k]
 end
 
-# Computes the jacobian of args[1] and args[2]
-# we need to think about where the arguments are located.
-# maybe we need to Jacobian functions?  
-function jacobian(i, j, k, grid, clock, fields, args)
-    return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, args[1]) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, args[2]) 
-    - ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, args[1]) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, args[2])
+# Computes the x-component of the Jacobian at cfc (because after the cross 
+# product with -ẑ, we get the y-component of the forcing term)
+function jacobian_x(i, j, k, grid, clock, fields)
+    return ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A) * ∂yᶜᶠᶜ(i, j, k, grid, x_derivative_func(i, j, k, grid, clock, fields))
+           - ∂yᶜᶠᶜ(i, j, k, grid, fields.A) * ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, x_derivative_func(i, j, k, grid, clock, fields))
 end
 
-# Computes the u-component forcing term; note that y_derivative_func is used
-# because -ẑ x ŷ = x̂
+# Computes the y-component of the Jacobian at fcc (because after the cross 
+# product with -ẑ, we get the x-component of the forcing term)
+function jacobian_y(i, j, k, grid, clock, fields)
+    return ∂xᶠᶜᶜ(i, j, k, grid, fields.A) * ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, y_derivative_func(i, j, k, grid, clock, fields))
+           - ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A) * ∂xᶠᶜᶜ(i, j, k, grid, y_derivative_func(i, j, k, grid, clock, fields))
+end
+
+# Computes the u-component forcing term at fcc 
+# Note that jacobian_y() is used because -ẑ x ŷ = x̂
 function u_forcing_func(i, j, k, grid, clock, fields)
-    args = (fields.A, y_derivative_func(i, j, k, grid, clock, fields))
-    return (1/fields.h[i, j, k])*(jacobian(i, j, k, grid, clock, fields, args))
+    return (1/ℑxᶠᵃᵃ(i, j, k, grid, fields.h))*(jacobian_y(i, j, k, grid, clock, fields))
 end
 
-# Computes the v-component forcing term; note that x_derivative_func is used 
-# because -ẑ x x̂ = -ŷ
+# Computes the v-component forcing term at cfc; 
+# Note that jacobian_x() is used because -ẑ x x̂ = -ŷ
 function v_forcing_func(i, j, k, grid, clock, fields)
-    args = (fields.A, x_derivative_func(i, j, k, grid, clock, fields))
-    return (-1/fields.h[i, j, k])*(jacobian(i, j, k, grid, clock, fields, args))
+    return (-1/ℑyᵃᶠᵃ(i, j, k, grid, fields.h))*(jacobian_x(i, j, k, grid, clock, fields))
 end
 
 
