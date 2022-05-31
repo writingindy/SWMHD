@@ -13,37 +13,33 @@ grid = RectilinearGrid(size = (Nx, Ny), x = (0, Lx), y = (-Ly/2, Ly/2), topology
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ
 
 # Computes ∂x(A)/h
-function x_inner_func(i, j, k, grid, clock, fields)
+function x_derivative_func(i, j, k, grid, clock, fields)
     return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A)/fields.h[i, j, k]
 end
 
 # Computes ∂y(A)/h
-function y_inner_func(i, j, k, grid, clock, fields)
+function y_derivative_func(i, j, k, grid, clock, fields)
     return ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A)/fields.h[i, j, k]
 end
 
-# Computes the Jacobian of A and ∂x(A)/h, the x-component of the Jacobian
-function jacobian_x(i, j, k, grid, clock, fields)
-    return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, x_inner_func(i, j, k, grid, clock, fields)) 
-    - ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, x_inner_func(i, j, k, grid, clock, fields))
+# Computes the jacobian of args[1] and args[2]
+function jacobian(i, j, k, grid, clock, fields, args)
+    return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, args[1]) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, args[2]) 
+    - ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, args[1]) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, args[2])
 end
 
-# Computes the Jacobian of A and ∂y(A)/h, the y-component of the Jacobian
-function jacobian_y(i, j, k, grid, clock, fields)
-    return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, y_inner_func(i, j, k, grid, clock, fields)) 
-    - ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, y_inner_func(i, j, k, grid, clock, fields))
-end
-
-# Computes the u-component forcing term; note that jacobian_y() is used because 
-# the cross product of -ẑ and ŷ is x̂
+# Computes the u-component forcing term; note that y_derivative_func is used
+# because -ẑ x ŷ = x̂
 function u_forcing_func(i, j, k, grid, clock, fields)
-    return (1/fields.h[i, j, k])*(jacobian_y(i, j, k, grid, clock, fields))
+    args = (fields.A, y_derivative_func(i, j, k, grid, clock, fields))
+    return (1/fields.h[i, j, k])*(jacobian(i, j, k, grid, clock, fields, args))
 end
 
-# Computes the v-component forcing term; note that jacobian_x() is used because
-# the cross product of -ẑ and x̂ is -ŷ
+# Computes the v-component forcing term; note that x_derivative_func is used 
+# because -ẑ x x̂ = -ŷ
 function v_forcing_func(i, j, k, grid, clock, fields)
-    return (-1/fields.h[i, j, k])*(jacobian_x(i, j, k, grid, clock, fields))
+    args = (fields.A, x_derivative_func(i, j, k, grid, clock, fields))
+    return (-1/fields.h[i, j, k])*(jacobian(i, j, k, grid, clock, fields, args))
 end
 
 u_forcing = Forcing(u_forcing_func, discrete_form = true)
@@ -54,8 +50,8 @@ v_forcing = Forcing(v_forcing_func, discrete_form = true)
 
 const U = 1.0         # Maximum jet velocity
 
-f = 1000         # Coriolis parameter
-g = 10^-3         # Gravitational acceleration
+f = 1         # Coriolis parameter
+g = 9.81         # Gravitational acceleration
 Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
 
 ## Construction of SWMHD model
@@ -81,7 +77,7 @@ small_amplitude = 1e-4
 
 uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * randn()
 
-A_i(x, y, z) = -500*y + 40*randn()
+A_i(x, y, z) = -y+ randn()
 
 set!(model, u = ū, h = h̄, A = A_i)
 
