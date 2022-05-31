@@ -1,28 +1,28 @@
 using Oceananigans
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
-
-
-Lx, Ly, Lz = 2π, 20, 1
-Nx, Ny = 128, 128
-
-grid = RectilinearGrid(size = (Nx, Ny), x = (0, Lx), y = (-Ly/2, Ly/2), topology = (Periodic, Bounded, Flat))
-
-## Forcing functions for the SWMHD model
-
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ
+using NCDatasets, Plots, Printf
 
 # Computes ∂x(A)/h
+# A and h are at centers, ccc
+# ∂x(A) is at fcc.
+# when we divide by h we need to interpolate h to fcc first
 function x_derivative_func(i, j, k, grid, clock, fields)
-    return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A)/fields.h[i, j, k]
+    return ℑxᶜᵃᵃ(i, j, k, grid, ᶠᶜᶜ, fields.A)/fields.h[i, j, k]
 end
 
 # Computes ∂y(A)/h
+# A and h are at centers, ccc
+# ∂y(A) is at cfc.
+# when we divide by h we need to interpolate h to cfc first
 function y_derivative_func(i, j, k, grid, clock, fields)
     return ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A)/fields.h[i, j, k]
 end
 
 # Computes the jacobian of args[1] and args[2]
+# we need to think about where the arguments are located.
+# maybe we need to Jacobian functions?  
 function jacobian(i, j, k, grid, clock, fields, args)
     return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, args[1]) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, args[2]) 
     - ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, args[1]) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, args[2])
@@ -42,17 +42,24 @@ function v_forcing_func(i, j, k, grid, clock, fields)
     return (-1/fields.h[i, j, k])*(jacobian(i, j, k, grid, clock, fields, args))
 end
 
-u_forcing = Forcing(u_forcing_func, discrete_form = true)
 
-v_forcing = Forcing(v_forcing_func, discrete_form = true)
+# Model parameters
 
-## Model parameters
+Lx, Ly, Lz = 2π, 20, 1
+Nx, Ny = 128, 128
 
 const U = 1.0         # Maximum jet velocity
 
 f = 1         # Coriolis parameter
 g = 9.81         # Gravitational acceleration
 Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
+
+grid = RectilinearGrid(size = (Nx, Ny), x = (0, Lx), y = (-Ly/2, Ly/2), topology = (Periodic, Bounded, Flat))
+
+## Forcing functions for the SWMHD model
+
+u_forcing = Forcing(u_forcing_func, discrete_form = true)
+v_forcing = Forcing(v_forcing_func, discrete_form = true)
 
 ## Construction of SWMHD model
 
@@ -70,28 +77,24 @@ model = ShallowWaterModel(
 
 h̄(x, y, z) = Lz - Δη * tanh(y)
 ū(x, y, z) = U * sech(y)^2
-
 ω̄(x, y, z) = 2 * U * sech(y)^2 * tanh(y)
 
 small_amplitude = 1e-4
 
 uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * randn()
 
-A_i(x, y, z) = -y+ randn()
+Aᵢ(x, y, z) = -y + randn()
 
-set!(model, u = ū, h = h̄, A = A_i)
+set!(model, u = ū, h = h̄, A = Aᵢ)
 
 u, v, h = model.solution
 
-# Build and compute mean vorticity discretely
 ω = Field(∂x(v) - ∂y(u))
 compute!(ω)
 
-# Copy mean vorticity to a new field
 ωⁱ = Field{Face, Face, Nothing}(model.grid)
 ωⁱ .= ω
 
-# Use this new field to compute the perturbation vorticity
 ω′ = Field(ω - ωⁱ)
 
 set!(model, u = uⁱ)
@@ -118,8 +121,6 @@ simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_n
 run!(simulation)
 
 ## Visualizing the results
-
-using NCDatasets, Plots, Printf
 
 x, y = xnodes(ω), ynodes(ω)
 
