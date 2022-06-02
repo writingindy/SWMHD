@@ -7,44 +7,41 @@ using NCDatasets, Plots, Printf
 # Computes ∂x(A)/h at ccc
 # A and h are at centers, ccc
 # ∂x(A) is at fcc, and we interpolate it to ccc
-function x_derivative_func(i, j, k, grid, clock, fields)
+function ∂xA_over_h(i, j, k, grid, clock, fields)
     return ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A)/fields.h[i, j, k]
 end
-# FJP: can change the name of this function to ∂xA_over_h
-# after testing we can remove the 2nd and 3rd comments, here, and thruoghout.
 
 # Computes ∂y(A)/h at ccc
 # A and h are at centers, ccc
 # ∂y(A) is at cfc, and we interpolate it to ccc
-function y_derivative_func(i, j, k, grid, clock, fields)
+function ∂yA_over_h(i, j, k, grid, clock, fields)
     return ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A)/fields.h[i, j, k]
 end
-# FJP: ∂yA_over_h?
 
-# Computes the Jacobian at fcc for the x-component of the forcing
+# Computes the Jacobian at fcc for the u-component forcing term
 function jacobian_x(i, j, k, grid, clock, fields)
-    return ∂xᶠᶜᶜ(i, j, k, grid, fields.A) * ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, y_derivative_func(i, j, k, grid, clock, fields))
-           - ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A) * ∂xᶠᶜᶜ(i, j, k, grid, y_derivative_func(i, j, k, grid, clock, fields))
+    return ∂xᶠᶜᶜ(i, j, k, grid, fields.A) * ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, ∂yA_over_h(i, j, k, grid, clock, fields))
+           - ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, fields.A) * ∂xᶠᶜᶜ(i, j, k, grid, ∂yA_over_h(i, j, k, grid, clock, fields))
 end
 
 
 # Computes the Jacobian at cfc for the v-component forcing term
 function jacobian_y(i, j, k, grid, clock, fields)
-    return ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A) * ∂yᶜᶠᶜ(i, j, k, grid, x_derivative_func(i, j, k, grid, clock, fields))
-           - ∂yᶜᶠᶜ(i, j, k, grid, fields.A) * ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, x_derivative_func(i, j, k, grid, clock, fields))
+    return ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, fields.A) * ∂yᶜᶠᶜ(i, j, k, grid, ∂xA_over_h(i, j, k, grid, clock, fields))
+           - ∂yᶜᶠᶜ(i, j, k, grid, fields.A) * ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, ∂xA_over_h(i, j, k, grid, clock, fields))
 end
 
 # Computes the u-component forcing term at fcc 
-function u_forcing_func(i, j, k, grid, clock, fields)
+# Note that jacobian_y() is used because -ẑ × ŷ = x̂
+function Lorentz_forcing_term_x(i, j, k, grid, clock, fields)
     return (1/ℑxᶠᵃᵃ(i, j, k, grid, fields.h))*(jacobian_x(i, j, k, grid, clock, fields))
 end
-#FJP: change name to Lorentz_force_x
-        
-# Computes the v-component forcing term at cfc 
-function v_forcing_func(i, j, k, grid, clock, fields)
+
+# Computes the v-component forcing term at cfc; 
+# Note that jacobian_x() is used because -ẑ × x̂ = -ŷ
+function Lorentz_forcing_term_y(i, j, k, grid, clock, fields)
     return (-1/ℑyᵃᶠᵃ(i, j, k, grid, fields.h))*(jacobian_y(i, j, k, grid, clock, fields))
 end
-#FJP: change name to Lorentz_force_y
 
 
 # Model parameters
@@ -62,8 +59,8 @@ grid = RectilinearGrid(size = (Nx, Ny), x = (0, Lx), y = (-Ly/2, Ly/2), topology
 
 ## Forcing functions for the SWMHD model
 
-u_forcing = Forcing(u_forcing_func, discrete_form = true)
-v_forcing = Forcing(v_forcing_func, discrete_form = true)
+Lorentz_force_x = Forcing(Lorentz_forcing_term_x, discrete_form = true)
+Lorentz_force_y = Forcing(Lorentz_forcing_term_y, discrete_form = true)
 
 ## Construction of SWMHD model
 
@@ -74,7 +71,7 @@ model = ShallowWaterModel(
                           gravitational_acceleration = g,
                           coriolis = FPlane(f=f),
                           tracers = (:A),
-                          forcing = (u = u_forcing, v = v_forcing),
+                          forcing = (u = Lorentz_force_x, v = Lorentz_force_y),
                           formulation = VectorInvariantFormulation())
 
 ## Background state and perturbation
