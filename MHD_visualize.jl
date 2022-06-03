@@ -3,7 +3,7 @@ using Oceananigans.Operators
 using PyPlot
 
 Lx, Ly = 10,  10
-Nx, Ny = 200, 200
+Nx, Ny = 400, 400
 
 grid = RectilinearGrid(CPU(); size = (Nx, Ny), 
                       x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2),
@@ -45,14 +45,16 @@ B_y = ∇A_x
 
 #plt = plot_surface(xᶜ, yᶜ, A_num, cmap=ColorMap("coolwarm"))
 
+step = 10
+
 #=plt_A = colorbar(contourf(xᶜ, yᶜ, A_num))
-plt_lorentz = quiver(xᶜ, yᶜ, lorentz_force_x, lorentz_force_y, scale = 17)
+plt_lorentz = quiver(xᶜ[1:step:end], yᶜ[1:step:end], lorentz_force_x[1:step:end, 1:step:end], lorentz_force_y[1:step:end, 1:step:end], scale = 17)
 title("Contour plot of A and quiver plot of Lorentz force")
 xlim((-4, 4))
 ylim((-4, 4))=#
 
 plt_A = colorbar(contourf(xᶜ, yᶜ, A_num))
-plt_B = quiver(xᶜ, yᶜ, B_x, B_y, scale = 75)
+plt_B = quiver(xᶜ[1:step:end], yᶜ[1:step:end], B_x[1:step:end, 1:step:end], B_y[1:step:end, 1:step:end], scale = 15)
 title("Contour plot of A and quiver plot of magnetic field")
 xlim((-4, 4))
 ylim((-4, 4))
