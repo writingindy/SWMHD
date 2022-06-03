@@ -3,7 +3,7 @@ using Oceananigans.Operators
 using PyPlot
 
 Lx, Ly = 10,  10
-Nx, Ny = 400, 400
+Nx, Ny = 200, 200
 
 grid = RectilinearGrid(CPU(); size = (Nx, Ny), 
                       x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2),
@@ -40,7 +40,7 @@ end
 
 error = abs.(jacobian_exact .- jacobian_approx)
 
-plt_jacobian = plot_surface(xᶜ, yᶜ, jacobian)
+plt_jacobian = plot_surface(xᶜ, yᶜ, jacobian_exact)
 plt_jacobian_approx = plot_surface(xᶜ, yᶜ, jacobian_approx)
 #plt_error = plot_surface(, y_grid[2:end], error)
 
