@@ -47,14 +47,14 @@ B_y = ∇A_x
 
 step = 10
 
-#=plt_A = colorbar(contourf(xᶜ, yᶜ, A_num))
-plt_lorentz = quiver(xᶜ[1:step:end], yᶜ[1:step:end], lorentz_force_x[1:step:end, 1:step:end], lorentz_force_y[1:step:end, 1:step:end], scale = 17)
+plt_A = colorbar(contourf(xᶜ, yᶜ, A_num))
+plt_lorentz = quiver(xᶜ[1:step:end], yᶜ[1:step:end], lorentz_force_x[1:step:end, 1:step:end], lorentz_force_y[1:step:end, 1:step:end], scale = 4)
 title("Contour plot of A and quiver plot of Lorentz force")
 xlim((-4, 4))
-ylim((-4, 4))=#
+ylim((-4, 4))
 
-plt_A = colorbar(contourf(xᶜ, yᶜ, A_num))
+#=plt_A = colorbar(contourf(xᶜ, yᶜ, A_num))
 plt_B = quiver(xᶜ[1:step:end], yᶜ[1:step:end], B_x[1:step:end, 1:step:end], B_y[1:step:end, 1:step:end], scale = 15)
 title("Contour plot of A and quiver plot of magnetic field")
 xlim((-4, 4))
-ylim((-4, 4))
+ylim((-4, 4))=#
