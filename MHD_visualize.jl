@@ -4,7 +4,7 @@ using PyPlot
 using LinearAlgebra
 
 Lx, Ly = 10,  10
-Nx, Ny = 200, 200
+Nx, Ny = 400, 400
 
 ℓ = 2
 c = -1
