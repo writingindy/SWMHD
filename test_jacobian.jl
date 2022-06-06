@@ -1,9 +1,9 @@
 using Oceananigans
 using Oceananigans.Operators
-#using PyPlot
+using PyPlot
 
 Lx, Ly = 10,  10
-Nx, Ny = 100, 100
+Nx, Ny = 200, 200
 
 grid = RectilinearGrid(CPU(); size = (Nx, Ny), 
                       x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2),
@@ -29,17 +29,17 @@ jacobian_x_approx = zeros(Float64, length(xᶜ), length(yᶜ))
 jacobian_y_approx = zeros(Float64, length(xᶜ), length(yᶜ))
 
 for i = 1:Nx, j = 1:Ny
-    jacobian_x_approx[i, j] = ∂xᶠᶜᶜ(i, j, 1, grid, A, xᶜ, yᶜ) * ℑxyᶠᶜᵃ(i, j, 1, grid, ∂yᶜᶠᶜ, ∂A_x, xᶜ, yᶜ)
-                            - ∂xᶠᶜᶜ(i, j, 1, grid, ∂A_x, xᶜ, yᶜ) * ℑxyᶠᶜᵃ(i, j, 1, grid, ∂yᶜᶠᶜ, A, xᶜ, yᶜ)
-    jacobian_y_approx[i, j] = ℑxyᶜᶠᵃ(i, j, 1, grid, ∂xᶠᶜᶜ, A, xᶜ, yᶜ) * ∂yᶜᶠᶜ(i, j, 1, grid, ∂A_y, xᶜ, yᶜ)
-                            - ℑxyᶜᶠᵃ(i, j, 1, grid, ∂xᶠᶜᶜ, ∂A_y, xᶜ, yᶜ) * ∂yᶜᶠᶜ(i, j, 1, grid, A, xᶜ, yᶜ)
+    jacobian_x_approx[i, j] = ((∂xᶠᶜᶜ(i, j, 1, grid, A, xᶜ, yᶜ) * ℑxyᶠᶜᵃ(i, j, 1, grid, ∂yᶜᶠᶜ, ∂A_x, xᶜ, yᶜ))
+                            - (∂xᶠᶜᶜ(i, j, 1, grid, ∂A_x, xᶜ, yᶜ) * ℑxyᶠᶜᵃ(i, j, 1, grid, ∂yᶜᶠᶜ, A, xᶜ, yᶜ)))
+    jacobian_y_approx[i, j] = ((ℑxyᶜᶠᵃ(i, j, 1, grid, ∂xᶠᶜᶜ, A, xᶜ, yᶜ) * ∂yᶜᶠᶜ(i, j, 1, grid, ∂A_y, xᶜ, yᶜ))
+                            - (ℑxyᶜᶠᵃ(i, j, 1, grid, ∂xᶠᶜᶜ, ∂A_y, xᶜ, yᶜ) * ∂yᶜᶠᶜ(i, j, 1, grid, A, xᶜ, yᶜ)))
 end
 
 for i = 1:Nx, j = 1:Ny
-    jacobian_x_exact[i, j] = ∂A_x(i, j, 1, grid, xᶠ, yᶜ) * ∂A_xy(i, j, 1, grid, xᶠ, yᶜ) 
-                           - ∂A_xx(i, j, 1, grid, xᶠ, yᶜ) * ∂A_y(i, j, 1, grid, xᶠ, yᶜ)
-    jacobian_y_exact[i, j] = ∂A_x(i, j, 1, grid, xᶜ, yᶠ) * ∂A_yy(i, j, 1, grid, xᶜ, yᶠ)
-                           - ∂A_yx(i, j, 1, grid, xᶜ, yᶠ) * ∂A_y(i, j, 1, grid, xᶜ, yᶠ)
+    jacobian_x_exact[i, j] = ((∂A_x(i, j, 1, grid, xᶠ, yᶜ) * ∂A_xy(i, j, 1, grid, xᶠ, yᶜ)) 
+                           - (∂A_xx(i, j, 1, grid, xᶠ, yᶜ) * ∂A_y(i, j, 1, grid, xᶠ, yᶜ)))
+    jacobian_y_exact[i, j] = ((∂A_x(i, j, 1, grid, xᶜ, yᶠ) * ∂A_yy(i, j, 1, grid, xᶜ, yᶠ))
+                           - (∂A_yx(i, j, 1, grid, xᶜ, yᶠ) * ∂A_y(i, j, 1, grid, xᶜ, yᶠ)))
 end
 
 
