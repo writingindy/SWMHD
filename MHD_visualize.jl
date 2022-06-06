@@ -4,9 +4,10 @@ using PyPlot
 using LinearAlgebra
 
 Lx, Ly = 10,  10
-Nx, Ny = 400, 400
+Nx, Ny = 200, 200
 
 ℓ = 2
+c = -1
 
 grid = RectilinearGrid(CPU(); size = (Nx, Ny), 
                       x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2),
@@ -16,15 +17,15 @@ xᶜ, xᶠ = grid.xᶜᵃᵃ, grid.xᶠᵃᵃ
 yᶜ, yᶠ = grid.yᵃᶜᵃ, grid.yᵃᶠᵃ
 
 
-   A(i, j, k, grid, x, y) = exp( - (x[i]^2 + y[j]^2) / ℓ^2)
-∂A_x(i, j, k, grid, x, y) = -(2 / ℓ^2) * x[i] * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
-∂A_y(i, j, k, grid, x, y) = -(2 / ℓ^2) * y[j] * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
+   A(i, j, k, grid, x, y) = c* exp( - (x[i]^2 + y[j]^2) / ℓ^2)
+∂A_x(i, j, k, grid, x, y) = -c * (2 / ℓ^2) * x[i] * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
+∂A_y(i, j, k, grid, x, y) = -c * (2 / ℓ^2) * y[j] * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
 
-∂A_xx(i, j, k, grid, x, y) = ((4 * x[i]^2 - 2*ℓ^2) / ℓ^4) * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
-∂A_xy(i, j, k, grid, x, y) = ((4 * x[i] * y[j]) / ℓ^4) * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
+∂A_xx(i, j, k, grid, x, y) = c * ((4 * x[i]^2 - 2*ℓ^2) / ℓ^4) * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
+∂A_xy(i, j, k, grid, x, y) = c * ((4 * x[i] * y[j]) / ℓ^4) * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
 
-∂A_yx(i, j, k, grid, x, y) = ((4 * x[i] * y[j]) / ℓ^4) * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
-∂A_yy(i, j, k, grid, x, y) = ((4 * y[j]^2 - 2*ℓ^2) / ℓ^4) * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
+∂A_yx(i, j, k, grid, x, y) = c * ((4 * x[i] * y[j]) / ℓ^4) * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
+∂A_yy(i, j, k, grid, x, y) = c * ((4 * y[j]^2 - 2*ℓ^2) / ℓ^4) * exp( - (x[i]^2 + y[j]^2) / ℓ^2)
 
 ∂A_x_num(i, j, k, grid, A, x, y) = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, A, x, y)
 ∂A_y_num(i, j, k, grid, A, x, y) = ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, A, x, y)
@@ -60,9 +61,6 @@ for i = 1:Nx, j = 1:Ny
                    - (∂A_y(i, j, 1, grid, xᶠ, yᶜ) * ∂A_xy(i, j, 1, grid, xᶠ, yᶜ)))
    lorentz_y[i, j] = ((∂A_y(i, j, 1, grid, xᶜ, yᶠ) * ∂A_xx(i, j, 1, grid, xᶜ, yᶠ)) 
                    - (∂A_x(i, j, 1, grid, xᶜ, yᶠ) * ∂A_yx(i, j, 1, grid, xᶜ, yᶠ)))
-
-   test_x[i, j] = exact_x(i, j, 1, grid,  xᶜ, yᶜ)
-   test_y[i, j] = exact_y(i, j, 1, grid,  xᶜ, yᶜ)
 end
 
 #plt = plot_surface(xᶜ, yᶜ, A_num, cmap=ColorMap("coolwarm"))
