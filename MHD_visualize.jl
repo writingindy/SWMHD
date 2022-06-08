@@ -1,3 +1,4 @@
+using Oceananigans
 using Oceananigans.Operators
 using PyPlot
 using LinearAlgebra
@@ -34,8 +35,7 @@ for N in Ns
   
   local Nx, Ny = N, N
   
-  local grid = RectilinearGrid(; size = (Nx, Ny),  x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2),
-                      topology = (Periodic, Periodic, Flat))
+  local grid = RectilinearGrid(; size = (Nx, Ny),  x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), topology = (Periodic, Periodic, Flat))
   
   local xᶜ, xᶠ = grid.xᶜᵃᵃ, grid.xᶠᵃᵃ
   local yᶜ, yᶠ = grid.yᵃᶜᵃ, grid.yᵃᶠᵃ
