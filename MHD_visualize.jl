@@ -106,6 +106,6 @@ best_fit_lorentz_y = fit(log10.(Ns[1:end]), log10.([error_lorentz_y[N] for N in 
 @printf("\n")
 @printf("Error for Bx        is of order = %3.2f \n", -best_fit_Bx[1])
 @printf("Error for By        is of order = %3.2f \n", -best_fit_By[1])
-@printf("Error for lorentz_y is of order = %3.2f \n", -best_fit_lorentz_x[1])
+@printf("Error for lorentz_x is of order = %3.2f \n", -best_fit_lorentz_x[1])
 @printf("Error for lorentz_y is of order = %3.2f \n", -best_fit_lorentz_y[1])
 @printf("\n")
