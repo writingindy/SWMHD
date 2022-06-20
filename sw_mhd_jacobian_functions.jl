@@ -29,9 +29,9 @@ function jacobian_y(i, j, k, grid, fields)
 end
 
 function lorentz_force_func_x(i, j, k, grid, clock, fields)
-    return (1/ℑxᶠᵃᵃ(i, j, k, grid, fields.h))*(jacobian_x(i, j, k, grid, fields))
+    return (-1/ℑxᶠᵃᵃ(i, j, k, grid, fields.h))*(jacobian_x(i, j, k, grid, fields))
 end
 
 function lorentz_force_func_y(i, j, k, grid, clock, fields)
-    return (-1/ℑyᵃᶠᵃ(i, j, k, grid, fields.h))*(jacobian_y(i, j, k, grid, fields))
+    return (1/ℑyᵃᶠᵃ(i, j, k, grid, fields.h))*(jacobian_y(i, j, k, grid, fields))
 end
