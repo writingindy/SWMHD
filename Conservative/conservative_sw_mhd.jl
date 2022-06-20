@@ -30,8 +30,8 @@ model = ShallowWaterModel(grid = grid,
                           gravitational_acceleration = 9.81,
                           coriolis = FPlane(f=1),
                           tracers = (:A),
-                          forcing = (u = Forcing(div_lorentz_x, discrete_form = true), 
-                                     v = Forcing(div_lorentz_y, discrete_form = true)),
+                          forcing = (uh = Forcing(div_lorentz_x, discrete_form = true), 
+                                     vh = Forcing(div_lorentz_y, discrete_form = true)),
                           formulation = ConservativeFormulation()
                           )
 

@@ -36,3 +36,4 @@ function div_lorentz_y(i, j, k, grid, clock, advection, fields)
     return 1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_hbx_by, advection, fields) + δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hby_by, advection, fields))
 end
 
+
