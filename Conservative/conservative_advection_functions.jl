@@ -28,11 +28,11 @@ end
 
 
 
-function div_lorentz_x(i, j, k, grid, clock, fields, advection)
+function div_lorentz_x(i, j, k, grid, clock, advection, fields)
     return 1 / Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_hbx_bx, advection, fields) + δyᵃᶜᵃ(i, j, k, grid, momentum_flux_hby_bx, advection, fields))
 end
 
-function div_lorentz_y(i, j, k, grid, clock, fields, advection)
+function div_lorentz_y(i, j, k, grid, clock, advection, fields)
     return 1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_hbx_by, advection, fields) + δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hby_by, advection, fields))
 end
 
