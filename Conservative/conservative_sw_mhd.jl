@@ -1,7 +1,7 @@
 using Oceananigans
 using Oceananigans.Models.ShallowWaterModels: ConservativeFormulation
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
-using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxᶜᵃᵃ, δyᵃᶜᵃ, Vᶜᶜᶜ
+using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶠᵃ, δyᵃᶜᵃ, Vᶠᶜᶜ, Vᶜᶠᶜ
 using CairoMakie, Statistics, JLD2, Printf
 
 
@@ -47,8 +47,9 @@ start_time = [time_ns()]
 function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
-    u = sim.model.solution.u
+    uh = sim.model.solution.uh
     h = sim.model.solution.h
+    u = uh / h
     A = sim.model.tracers.A 
 
     @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(A): %.2e ms⁻¹, min(h): %.2e ms⁻¹, wall time: %s",
@@ -64,7 +65,9 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
-u, v, h = model.solution
+uh, vh, h = model.solution
+u = uh / h
+v = vh / h
 s = sqrt(u^2 + v^2)
 compute!(s)
 
