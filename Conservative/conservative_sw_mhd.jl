@@ -1,18 +1,7 @@
 using Oceananigans
 using Oceananigans.Models.ShallowWaterModels: ConservativeFormulation
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
-using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶠᵃ, δyᵃᶜᵃ, Vᶠᶜᶜ, Vᶜᶠᶜ
 using CairoMakie, Statistics, JLD2, Printf
-
-
-using Oceananigans.Advection: 
-    _advective_momentum_flux_Uu,
-    _advective_momentum_flux_Uv,
-    _advective_momentum_flux_Vu,
-    _advective_momentum_flux_Vv
-
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 
 include("conservative_advection_functions.jl")
 
@@ -103,7 +92,7 @@ heatmap!(ax_s, x, y, s, colormap=:deep)
 
 frames = 2:length(times)
 
-record(fig, output_prefix * ".mp4", frames, framerate=6) do i
+record(fig, output_prefix * ".mp4", frames, framerate=96) do i
     @info "Plotting iteration $i of $(frames[end])..."
     iter[] = i
 end

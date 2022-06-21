@@ -1,3 +1,8 @@
+using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶠᵃ, δyᵃᶜᵃ, Vᶠᶜᶜ, Vᶜᶠᶜ
+
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
+
 function B_x(i, j, k, grid, A, h)
     return -ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, A) / ℑxᶠᵃᵃ(i, j, k, grid, h)
 end
@@ -22,16 +27,16 @@ end
 
 
 @inline momentum_flux_hbx_bx(i, j, k, grid, fields) = 
-    @inbounds advective_momentum_flux_Uu(i, j, k, grid, hB_x, B_x, fields.A, fields.h)
+    @inbounds advective_momentum_flux_Uu(i, j, k, grid, hB_x, B_x, fields.A, fields.h) / fields.h[i, j, k]
 
 @inline momentum_flux_hby_bx(i, j, k, grid, fields) =
-    @inbounds advective_momentum_flux_Vu(i, j, k, grid, hB_y, B_x, fields.A, fields.h)
+    @inbounds advective_momentum_flux_Vu(i, j, k, grid, hB_y, B_x, fields.A, fields.h) / ℑxyᶠᶠᵃ(i, j, k, grid, fields.h)
 
 @inline momentum_flux_hbx_by(i, j, k, grid, fields) =
-    @inbounds advective_momentum_flux_Uv(i, j, k, grid, hB_x, B_y, fields.A, fields.h)
+    @inbounds advective_momentum_flux_Uv(i, j, k, grid, hB_x, B_y, fields.A, fields.h) / ℑxyᶠᶠᵃ(i, j, k, grid, fields.h)
 
 @inline momentum_flux_hby_by(i, j, k, grid, fields) =
-    @inbounds advective_momentum_flux_Vv(i, j, k, grid, hB_y, B_y, fields.A, fields.h)
+    @inbounds advective_momentum_flux_Vv(i, j, k, grid, hB_y, B_y, fields.A, fields.h) / fields.h[i, j, k]
 
 
 function div_lorentz_x(i, j, k, grid, clock, fields)

@@ -14,7 +14,7 @@ grid = RectilinearGrid(size = (64, 64),
 
 using Oceananigans.TurbulenceClosures
 #horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh)
-biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=1e-3, κ=1e-3)
+biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=1e-6, κ=1e-6)
 
 model = ShallowWaterModel(grid = grid,
                           timestepper = :RungeKutta3,
@@ -30,11 +30,17 @@ model = ShallowWaterModel(grid = grid,
                           formulation = VectorInvariantFormulation()
                           )
 
+Aᵢ(x, y, z) = 0.1exp(-((x - 0.5)^2 + y^2)) - 0.1exp(-((x + 0.5)^2 + y^2))
+
+#uᵢ(x, y, z) = 5y*exp(-(x^2 + y^2))
+#vᵢ(x, y, z) = -5x*exp(-(x^2 + y^2))
+set!(model#=, u = uᵢ, v = vᵢ=#, h = 1, A = Aᵢ)
+#=
 Aᵢ(x, y, z) = -0.1y
 uᵢ(x, y, z) = 5y*exp(-(x^2 + y^2))
 vᵢ(x, y, z) = -5x*exp(-(x^2 + y^2))
-set!(model, u = uᵢ, v = vᵢ, h = 1, A = Aᵢ)
-simulation = Simulation(model, Δt = 0.01, stop_time = 150.0)
+set!(model, u = uᵢ, v = vᵢ, h = 1, A = Aᵢ)=#
+simulation = Simulation(model, Δt = 0.01, stop_time = 35.0)
 
 start_time = [time_ns()]
 
@@ -95,7 +101,7 @@ heatmap!(ax_s, x, y, s, colormap=:deep)
 
 frames = 2:length(times)
 
-record(fig, output_prefix * ".mp4", frames, framerate=6) do i
+record(fig, output_prefix * ".mp4", frames, framerate=96) do i
     @info "Plotting iteration $i of $(frames[end])..."
     iter[] = i
 end
