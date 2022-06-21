@@ -1,8 +1,11 @@
 using Oceananigans
 using Oceananigans.Models.ShallowWaterModels: ConservativeFormulation
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
+using Oceananigans.Operators
+using Oceananigans.Grids: AbstractGrid
 using CairoMakie, Statistics, JLD2, Printf
 
+include("advection_helpers.jl")
 include("conservative_advection_functions.jl")
 
 Lx, Ly = 10, 10
