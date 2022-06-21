@@ -14,7 +14,7 @@ using Oceananigans.Advection:
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 
-include("new_functions.jl")
+include("conservative_advection_functions.jl")
 
 Lx, Ly = 10, 10
 
@@ -35,7 +35,7 @@ model = ShallowWaterModel(grid = grid,
                           formulation = ConservativeFormulation()
                           )
 
-Aᵢ(x, y, z) = 0.1exp(-((x - 0.5)^2 + y^2)) - 0.5exp(-((x + 0.5)^2 + y^2))
+Aᵢ(x, y, z) = 0.1exp(-((x - 0.5)^2 + y^2)) - 0.1exp(-((x + 0.5)^2 + y^2))
 
 #uᵢ(x, y, z) = 5y*exp(-(x^2 + y^2))
 #vᵢ(x, y, z) = -5x*exp(-(x^2 + y^2))
@@ -80,3 +80,30 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.
 
 @info "Running with Δt = $(prettytime(simulation.Δt))"
 run!(simulation)
+
+output_prefix = "SW_MHD_adjustment"
+
+x, y, z = nodes((Center, Center, Center), grid)
+s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
+A_timeseries = FieldTimeSeries(filename * ".jld2", "A")
+times = s_timeseries.times
+
+@info "Making a movie of the magnetic potential function A..."
+
+iter = Observable(2)
+A = @lift interior(A_timeseries[$iter], :, :, 1)
+s = @lift interior(s_timeseries[$iter], :, :, 1)
+title_A = @lift(@sprintf("Magnetic potential at time = %s", string(round(times[$iter], digits = 2))))
+title_s = @lift(@sprintf("Speed at time = %s", string(round(times[$iter], digits = 2))))
+fig = Figure(resolution = (800, 400))
+ax_A = Axis(fig[1,1], xlabel = "x", ylabel = "y", title=title_A)
+ax_s = Axis(fig[1,2], xlabel = "x", ylabel = "y", title=title_s)
+heatmap!(ax_A, x, y, A, colormap=:deep)
+heatmap!(ax_s, x, y, s, colormap=:deep)
+
+frames = 2:length(times)
+
+record(fig, output_prefix * ".mp4", frames, framerate=6) do i
+    @info "Plotting iteration $i of $(frames[end])..."
+    iter[] = i
+end
