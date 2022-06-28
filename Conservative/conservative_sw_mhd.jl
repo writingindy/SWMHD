@@ -1,11 +1,10 @@
 using Oceananigans
 using Oceananigans.Models.ShallowWaterModels: ConservativeFormulation
-using Oceananigans.Advection: VelocityStencil, VorticityStencil
+using Oceananigans.Advection
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using CairoMakie, Statistics, JLD2, Printf
 
-include("advection_helpers.jl")
 include("conservative_advection_functions.jl")
 
 Lx, Ly = 10, 10
@@ -27,12 +26,13 @@ model = ShallowWaterModel(grid = grid,
                           formulation = ConservativeFormulation()
                           )
 
-Aᵢ(x, y, z) = 0.1exp(-((x - 0.5)^2 + y^2)) - 0.1exp(-((x + 0.5)^2 + y^2))
+Aᵢ(x, y, z) = -0.1y
 
-#uᵢ(x, y, z) = 5y*exp(-(x^2 + y^2))
-#vᵢ(x, y, z) = -5x*exp(-(x^2 + y^2))
-set!(model#=, u = uᵢ, v = vᵢ=#, h = 1, A = Aᵢ)
-simulation = Simulation(model, Δt = 0.01, stop_time = 35.0)
+hᵢ(x, y, z) = 1
+uhᵢ(x, y, z) = 5y*exp(-(x^2 + y^2))
+vhᵢ(x, y, z) = -5x*exp(-(x^2 + y^2))
+set!(model, uh = uhᵢ, vh = vhᵢ, h = hᵢ, A = Aᵢ)
+simulation = Simulation(model, Δt = 0.01, stop_time = 70.0)
 
 start_time = [time_ns()]
 
