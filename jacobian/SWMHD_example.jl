@@ -1,20 +1,20 @@
 using Oceananigans
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
-using Oceananigans.Operators: ℑxᶜᵃᵃ, ∂xᶠᶜᶜ, ℑyᵃᶜᵃ, ∂yᶜᶠᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators
 using CairoMakie, Statistics, JLD2, Printf
 
 include("sw_mhd_jacobian_functions.jl")
 
 Lx, Ly = 10, 10
 
-grid = RectilinearGrid(size = (64, 64), 
+grid = RectilinearGrid(size = (128, 128), 
                           x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), 
                    topology = (Periodic, Periodic, Flat))
 
 using Oceananigans.TurbulenceClosures
 #horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh)
-biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=1e-6, κ=1e-6)
+biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=1e-9, κ=1e-9)
 
 model = ShallowWaterModel(grid = grid,
                           timestepper = :RungeKutta3,
@@ -26,21 +26,17 @@ model = ShallowWaterModel(grid = grid,
                           tracers = (:A),
                           forcing = (u = Forcing(lorentz_force_func_x, discrete_form = true), 
                                      v = Forcing(lorentz_force_func_y, discrete_form = true)),
-                          closure = biharmonic_viscosity,
+                          #closure = biharmonic_viscosity,
                           formulation = VectorInvariantFormulation()
                           )
 
-Aᵢ(x, y, z) = 0.1exp(-((x - 0.5)^2 + y^2)) - 0.1exp(-((x + 0.5)^2 + y^2))
 
-#uᵢ(x, y, z) = 5y*exp(-(x^2 + y^2))
-#vᵢ(x, y, z) = -5x*exp(-(x^2 + y^2))
-set!(model#=, u = uᵢ, v = vᵢ=#, h = 1, A = Aᵢ)
-#=
-Aᵢ(x, y, z) = -0.1y
-uᵢ(x, y, z) = 5y*exp(-(x^2 + y^2))
-vᵢ(x, y, z) = -5x*exp(-(x^2 + y^2))
-set!(model, u = uᵢ, v = vᵢ, h = 1, A = Aᵢ)=#
-simulation = Simulation(model, Δt = 0.01, stop_time = 35.0)
+
+Aᵢ(x, y, z) = -0.05y
+uᵢ(x, y, z) = y*exp(-(x^2 + y^2))
+vᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
+set!(model, u = uᵢ, v = vᵢ, h = 1, A = Aᵢ)
+simulation = Simulation(model, Δt = 0.01, stop_time = 25.0)
 
 start_time = [time_ns()]
 

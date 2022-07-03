@@ -9,7 +9,7 @@ include("conservative_advection_functions.jl")
 
 Lx, Ly = 10, 10
 
-grid = RectilinearGrid(size = (64, 64), 
+grid = RectilinearGrid(size = (128, 128), 
                           x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), 
                    topology = (Periodic, Periodic, Flat))
 
@@ -26,13 +26,13 @@ model = ShallowWaterModel(grid = grid,
                           formulation = ConservativeFormulation()
                           )
 
-Aᵢ(x, y, z) = -0.1y
+Aᵢ(x, y, z) = -0.05*y
 
 hᵢ(x, y, z) = 1
-uhᵢ(x, y, z) = 5y*exp(-(x^2 + y^2))
-vhᵢ(x, y, z) = -5x*exp(-(x^2 + y^2))
+uhᵢ(x, y, z) = y*exp(-(x^2 + y^2))
+vhᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
 set!(model, uh = uhᵢ, vh = vhᵢ, h = hᵢ, A = Aᵢ)
-simulation = Simulation(model, Δt = 0.01, stop_time = 70.0)
+simulation = Simulation(model, Δt = 0.01, stop_time = 25)
 
 start_time = [time_ns()]
 
