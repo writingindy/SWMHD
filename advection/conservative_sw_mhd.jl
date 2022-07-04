@@ -8,8 +8,9 @@ using CairoMakie, Statistics, JLD2, Printf
 include("conservative_advection_functions.jl")
 
 Lx, Ly = 10, 10
+Nx, Ny = 64, 64
 
-grid = RectilinearGrid(size = (128, 128), 
+grid = RectilinearGrid(size = (Nx, Ny), 
                           x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), 
                    topology = (Periodic, Periodic, Flat))
 
@@ -26,13 +27,27 @@ model = ShallowWaterModel(grid = grid,
                           formulation = ConservativeFormulation()
                           )
 
-Aᵢ(x, y, z) = -0.05*y
+Aᵢ(x, y, z) = 0.1*exp(-((x - 0.5)^2 + y^2)) - 0.1*exp(-((x + 0.5)^2 + y^2))
 
 hᵢ(x, y, z) = 1
-uhᵢ(x, y, z) = y*exp(-(x^2 + y^2))
-vhᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
-set!(model, uh = uhᵢ, vh = vhᵢ, h = hᵢ, A = Aᵢ)
-simulation = Simulation(model, Δt = 0.01, stop_time = 25)
+#uhᵢ(x, y, z) = y*exp(-(x^2 + y^2))
+#vhᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
+set!(model,#= uh = uhᵢ, vh = vhᵢ,=# h = hᵢ, A = Aᵢ)
+simulation = Simulation(model, Δt = 0.01, stop_time = 70)
+
+uh, vh, h = simulation.model.solution
+u = uh / h
+v = vh / h
+A = simulation.model.tracers.A
+B_x = -∂y(A) / h
+B_y = ∂x(A) / h
+kinetic_term = h*(u^2 + v^2)
+magnetic_term = h*(B_x^2 + B_y^2)
+pressure_term = 9.81*h^2
+energy_term = compute!(kinetic_term + magnetic_term + pressure_term)
+initial_energy = (1/2)*sum(energy_term[1:Nx, 1:Ny])
+
+
 
 start_time = [time_ns()]
 
@@ -71,7 +86,28 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.
                                                       overwrite_existing = true)
 
 @info "Running with Δt = $(prettytime(simulation.Δt))"
+sim_start_time = time_ns()*1e-9
 run!(simulation)
+sim_end_time = time_ns()*1e-9
+sim_time = prettytime(sim_end_time - sim_start_time)
+@info "Simulation took $(sim_time) to finish running."
+
+uh, vh, h = simulation.model.solution
+u = uh / h
+v = vh / h
+A = simulation.model.tracers.A
+B_x = -∂y(A) / h
+B_y = ∂x(A) / h
+kinetic_term = h*(u^2 + v^2)
+magnetic_term = h*(B_x^2 + B_y^2)
+pressure_term = 9.81*h^2
+energy_term = compute!(kinetic_term + magnetic_term + pressure_term)
+final_energy = (1/2)*sum(energy_term[1:Nx, 1:Ny])
+
+fractional_energy_diff = abs(final_energy - initial_energy)/initial_energy
+
+@info "Percentage difference in total energy is $(round(fractional_energy_diff * 100, digits = 3))%"
+
 
 output_prefix = "SW_MHD_adjustment"
 
