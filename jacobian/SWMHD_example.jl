@@ -34,21 +34,21 @@ model = ShallowWaterModel(grid = grid,
 
 
 
-Aᵢ(x, y, z) = -0.05*y
-uᵢ(x, y, z) = y*exp(-(x^2 + y^2))
-vᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
-set!(model, u = uᵢ, v = vᵢ, h = 1, A = Aᵢ)
+Aᵢ(x, y, z) = 0.5*exp(-((x - 0.5)^2 + y^2)) - 0.5*exp(-((x + 0.5)^2 + y^2))
+#uᵢ(x, y, z) = y*exp(-(x^2 + y^2))
+#vᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
+set!(model,#= u = uᵢ, v = vᵢ,=# h = 1, A = Aᵢ)
 simulation = Simulation(model, Δt = 0.01, stop_time = 25.0)
 
 u, v, h = simulation.model.solution
 A = simulation.model.tracers.A
 B_x = -∂y(A) / h
 B_y = ∂x(A) / h
-kinetic_term = h*(u^2 + v^2)
-magnetic_term = h*(B_x^2 + B_y^2)
-pressure_term = 9.81*h^2
-energy_term = compute!(kinetic_term + magnetic_term + pressure_term)
-initial_energy = (1/2)*sum(energy_term[1:64, 1:64])
+kinetic_energy = h*(u^2 + v^2)
+magnetic_energy = h*(B_x^2 + B_y^2)
+potential_energy = model.gravitational_acceleration*h^2
+total_energy = compute!(kinetic_energy + magnetic_energy + potential_energy)
+initial_energy = (1/2)*sum(total_energy[1:Nx, 1:Ny])
 
 
 
@@ -96,15 +96,15 @@ u, v, h = simulation.model.solution
 A = simulation.model.tracers.A
 B_x = -∂y(A) / h
 B_y = ∂x(A) / h
-kinetic_term = h*(u^2 + v^2)
-magnetic_term = h*(B_x^2 + B_y^2)
-pressure_term = 9.81*h^2
-energy_term = compute!(kinetic_term + magnetic_term + pressure_term)
-final_energy = (1/2)*sum(energy_term[1:64, 1:64])
+kinetic_energy = h*(u^2 + v^2)
+magnetic_energy = h*(B_x^2 + B_y^2)
+potential_energy = model.gravitational_acceleration*h^2
+total_energy = compute!(kinetic_energy + magnetic_energy + potential_energy)
+final_energy = (1/2)*sum(total_energy[1:Nx, 1:Ny])
 
-fractional_energy_diff = abs(final_energy - initial_energy)/initial_energy
+relative_energy_error = abs(final_energy - initial_energy)/initial_energy
 
-@info "Percentage difference in total energy is $(round(fractional_energy_diff * 100, digits = 3))%"
+@info "Percentage difference in total energy is $(round(relative_energy_error * 100, digits = 3))%"
 
 
 output_prefix = "SW_MHD_adjustment"

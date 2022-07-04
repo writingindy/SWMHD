@@ -41,11 +41,11 @@ v = vh / h
 A = simulation.model.tracers.A
 B_x = -∂y(A) / h
 B_y = ∂x(A) / h
-kinetic_term = h*(u^2 + v^2)
-magnetic_term = h*(B_x^2 + B_y^2)
-pressure_term = 9.81*h^2
-energy_term = compute!(kinetic_term + magnetic_term + pressure_term)
-initial_energy = (1/2)*sum(energy_term[1:Nx, 1:Ny])
+kinetic_energy = h*(u^2 + v^2)
+magnetic_energy = h*(B_x^2 + B_y^2)
+potential_energy = model.gravitational_acceleration*h^2
+total_energy = compute!(kinetic_energy + magnetic_energy + potential_energy)
+initial_energy = (1/2)*sum(total_energy[1:Nx, 1:Ny])
 
 
 
@@ -98,15 +98,15 @@ v = vh / h
 A = simulation.model.tracers.A
 B_x = -∂y(A) / h
 B_y = ∂x(A) / h
-kinetic_term = h*(u^2 + v^2)
-magnetic_term = h*(B_x^2 + B_y^2)
-pressure_term = 9.81*h^2
-energy_term = compute!(kinetic_term + magnetic_term + pressure_term)
-final_energy = (1/2)*sum(energy_term[1:Nx, 1:Ny])
+kinetic_energy = h*(u^2 + v^2)
+magnetic_energy = h*(B_x^2 + B_y^2)
+potential_energy = model.gravitational_acceleration*h^2
+total_energy = compute!(kinetic_energy + magnetic_energy + potential_energy)
+final_energy = (1/2)*sum(total_energy[1:Nx, 1:Ny])
 
 fractional_energy_diff = abs(final_energy - initial_energy)/initial_energy
 
-@info "Percentage difference in total energy is $(round(fractional_energy_diff * 100, digits = 3))%"
+@info "Percentage difference in total energy is $(round(fractional_energy_diff * 100, digits = 5))%"
 
 
 output_prefix = "SW_MHD_adjustment"
