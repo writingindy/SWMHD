@@ -66,7 +66,7 @@ A = model.tracers.A
 B_x = -∂y(A)/h
 B_y = ∂x(A)/h
 kinetic_energy_func(args...) = mean((1/2)*h*(u^2 + v^2))*Lx*Ly
-magnetic_energy_func(args...) = mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly*(1/2)
+magnetic_energy_func(args...) = mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly
 potential_energy_func(args...) = mean((1/2)*model.gravitational_acceleration*h^2)*Lx*Ly
 total_energy_func(args...) = mean((1/2)*h*(u^2 + v^2))*Lx*Ly + mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly*(1/2) + mean((1/2)*model.gravitational_acceleration*h^2)*Lx*Ly
 compute!(s)
