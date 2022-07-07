@@ -3,7 +3,7 @@ using Oceananigans.Models.ShallowWaterModels: ConservativeFormulation
 using Oceananigans.Advection
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
-using CairoMakie, Statistics, JLD2, Printf
+using CairoMakie, Statistics, JLD2, Printf, NCDatasets
 
 include("conservative_advection_functions.jl")
 
@@ -27,30 +27,15 @@ model = ShallowWaterModel(grid = grid,
                           formulation = ConservativeFormulation()
                           )
 
-Aᵢ(x, y, z) = 0.1*exp(-((x - 0.5)^2 + y^2)) - 0.1*exp(-((x + 0.5)^2 + y^2))
-
+#Aᵢ(x, y, z) = 0.1*exp(-((x - 0.5)^2 + y^2)) - 0.1*exp(-((x + 0.5)^2 + y^2))
+Aᵢ(x, y, z) = -0.05*y
 hᵢ(x, y, z) = 1
-#uhᵢ(x, y, z) = y*exp(-(x^2 + y^2))
-#vhᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
-set!(model,#= uh = uhᵢ, vh = vhᵢ,=# h = hᵢ, A = Aᵢ)
-simulation = Simulation(model, Δt = 0.01, stop_time = 70)
-
-uh, vh, h = simulation.model.solution
-u = uh / h
-v = vh / h
-A = simulation.model.tracers.A
-B_x = -∂y(A) / h
-B_y = ∂x(A) / h
-kinetic_energy = h*(u^2 + v^2)
-magnetic_energy = h*(B_x^2 + B_y^2)
-potential_energy = model.gravitational_acceleration*h^2
-total_energy = compute!(kinetic_energy + magnetic_energy + potential_energy)
-initial_energy = (1/2)*sum(total_energy[1:Nx, 1:Ny])
-
-
+uhᵢ(x, y, z) = y*exp(-(x^2 + y^2))
+vhᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
+set!(model, uh = uhᵢ, vh = vhᵢ, h = hᵢ, A = Aᵢ)
+simulation = Simulation(model, Δt = 0.01, stop_time = 25)
 
 start_time = [time_ns()]
-
 function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
@@ -76,14 +61,28 @@ uh, vh, h = model.solution
 u = uh / h
 v = vh / h
 s = sqrt(u^2 + v^2)
+A = model.tracers.A
+B_x = -∂y(A) / h
+B_y = ∂x(A) / h
+kinetic_energy_func(args...) = (1/2)*sum(h*(u^2 + v^2))*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ
+magnetic_energy_func(args...) = (1/2)*sum(h*(B_x^2 + B_y^2))*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ
+potential_energy_func(args...) = (1/2)*sum(model.gravitational_acceleration*h^2)*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ
+total_energy_func(args...) = (1/2)*sum(h*(u^2 + v^2))*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ + (1/2)*sum(h*(B_x^2 + B_y^2))*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ + (1/2)*sum(model.gravitational_acceleration*h^2)*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ
 compute!(s)
 
 filename = "SW_MHD_adjustment"
-
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.tracers.A, s),
                                                       schedule = TimeInterval(0.1),
                                                       filename = filename * ".jld2",
                                                       overwrite_existing = true)
+
+energies_filename = joinpath(@__DIR__, "energies.nc")
+simulation.output_writers[:energies] = NetCDFOutputWriter(model, (; kinetic_energy_func, magnetic_energy_func, potential_energy_func, total_energy_func),
+                                                        filename = energies_filename,
+                                                        schedule = IterationInterval(1),
+                                                        dimensions = (; kinetic_energy_func = (), magnetic_energy_func = (), potential_energy_func = (), total_energy_func = ()),
+                                                        overwrite_existing = true)
+
 
 @info "Running with Δt = $(prettytime(simulation.Δt))"
 sim_start_time = time_ns()*1e-9
@@ -91,23 +90,6 @@ run!(simulation)
 sim_end_time = time_ns()*1e-9
 sim_time = prettytime(sim_end_time - sim_start_time)
 @info "Simulation took $(sim_time) to finish running."
-
-uh, vh, h = simulation.model.solution
-u = uh / h
-v = vh / h
-A = simulation.model.tracers.A
-B_x = -∂y(A) / h
-B_y = ∂x(A) / h
-kinetic_energy = h*(u^2 + v^2)
-magnetic_energy = h*(B_x^2 + B_y^2)
-potential_energy = model.gravitational_acceleration*h^2
-total_energy = compute!(kinetic_energy + magnetic_energy + potential_energy)
-final_energy = (1/2)*sum(total_energy[1:Nx, 1:Ny])
-
-fractional_energy_diff = abs(final_energy - initial_energy)/initial_energy
-
-@info "Percentage difference in total energy is $(round(fractional_energy_diff * 100, digits = 5))%"
-
 
 output_prefix = "SW_MHD_adjustment"
 
@@ -135,3 +117,32 @@ record(fig, output_prefix * ".mp4", frames, framerate=96) do i
     @info "Plotting iteration $i of $(frames[end])..."
     iter[] = i
 end
+
+@info "Making a plot of the various energies of the system..."
+
+ds2 = NCDataset(simulation.output_writers[:energies].filepath, "r")
+
+                t = ds2["time"][:]
+   kinetic_energy = ds2["kinetic_energy_func"][:]
+  magnetic_energy = ds2["magnetic_energy_func"][:]
+ potential_energy = ds2["potential_energy_func"][:]
+     total_energy = ds2["total_energy_func"][:]
+
+close(ds2)
+
+f = Figure()
+ax = Axis(f[1, 1], xlabel = "time", ylabel = "energy", title = "Plot of different energies")
+
+lines!(t, kinetic_energy; linewidth = 4, label = "kinetic energy",)
+lines!(t, magnetic_energy; linewidth = 4, label = "magnetic energy")
+lines!(t, potential_energy; linewidth = 4, label = "potential energy")
+lines!(t, total_energy; linewidth = 4, label = "total energy")
+axislegend()
+
+save("energy_plot.png", f)
+
+final_total_energy = last(total_energy)
+initial_total_energy = first(total_energy)
+relative_energy_error = abs(final_total_energy - initial_total_energy)/initial_total_energy
+
+@info "Percentage difference in total energy is $(relative_energy_error * 100)%"
