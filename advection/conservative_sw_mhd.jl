@@ -58,16 +58,14 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 uh, vh, h = model.solution
-u = uh / h
-v = vh / h
 s = sqrt(u^2 + v^2)
 A = model.tracers.A
-B_x = -∂y(A) / h
-B_y = ∂x(A) / h
-kinetic_energy_func(args...) = (1/2)*sum(h*(u^2 + v^2))*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ
-magnetic_energy_func(args...) = (1/2)*sum(h*(B_x^2 + B_y^2))*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ
-potential_energy_func(args...) = (1/2)*sum(model.gravitational_acceleration*h^2)*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ
-total_energy_func(args...) = (1/2)*sum(h*(u^2 + v^2))*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ + (1/2)*sum(h*(B_x^2 + B_y^2))*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ + (1/2)*sum(model.gravitational_acceleration*h^2)*grid.Δxᶜᵃᵃ*grid.Δyᵃᶜᵃ
+hB_x = -∂y(A)
+hB_y = ∂x(A)
+kinetic_energy_func(args...) = mean((1/2)*h*(u^2 + v^2))*Lx*Ly
+magnetic_energy_func(args...) = mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly*(1/2)
+potential_energy_func(args...) = mean((1/2)*model.gravitational_acceleration*h^2)*Lx*Ly
+total_energy_func(args...) = mean((1/2)*h*(u^2 + v^2))*Lx*Ly + mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly*(1/2) + mean((1/2)*model.gravitational_acceleration*h^2)*Lx*Ly
 compute!(s)
 
 filename = "SW_MHD_adjustment"
@@ -131,13 +129,16 @@ ds2 = NCDataset(simulation.output_writers[:energies].filepath, "r")
 close(ds2)
 
 f = Figure()
-ax = Axis(f[1, 1], xlabel = "time", ylabel = "energy", title = "Plot of different energies")
 
-lines!(t, kinetic_energy; linewidth = 4, label = "kinetic energy",)
-lines!(t, magnetic_energy; linewidth = 4, label = "magnetic energy")
-lines!(t, potential_energy; linewidth = 4, label = "potential energy")
-lines!(t, total_energy; linewidth = 4, label = "total energy")
-axislegend()
+
+lines(f[1, 1], t, kinetic_energy; linewidth = 4, label = "kinetic energy", title = "kinetic energy", color = "red")
+axislegend(labelsize = 10, framevisible = false)
+lines(f[1, 2], t, magnetic_energy; linewidth = 4, label = "magnetic energy", title = "magnetic energy", color = "blue")
+axislegend(labelsize = 10, framevisible = false, position = :lt)
+lines(f[2, 1], t, potential_energy; linewidth = 4, label = "potential energy", title = "potential energy", color = "green")
+axislegend(labelsize = 10, framevisible = false, position = :rb)
+lines(f[2, 2], t, total_energy; linewidth = 4, label = "total energy", title = "total energy", color = "black")
+axislegend(labelsize = 10, framevisible = false, position = :lt)
 
 save("energy_plot.png", f)
 
