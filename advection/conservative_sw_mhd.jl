@@ -12,7 +12,7 @@ Nx, Ny = 64, 64
 
 grid = RectilinearGrid(size = (Nx, Ny), 
                           x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), 
-                   topology = (Periodic, Periodic, Flat))
+                   topology = (Periodic, Bounded, Flat))
 
 model = ShallowWaterModel(grid = grid,
                           timestepper = :RungeKutta3,
@@ -77,6 +77,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.
 energies_filename = joinpath(@__DIR__, "energies.nc")
 simulation.output_writers[:energies] = NetCDFOutputWriter(model, (; kinetic_energy_func, magnetic_energy_func, potential_energy_func, total_energy_func),
                                                         filename = energies_filename,
+                                                        array_type = Array{Float64},
                                                         schedule = IterationInterval(1),
                                                         dimensions = (; kinetic_energy_func = (), magnetic_energy_func = (), potential_energy_func = (), total_energy_func = ()),
                                                         overwrite_existing = true)
@@ -124,9 +125,13 @@ ds2 = NCDataset(simulation.output_writers[:energies].filepath, "r")
    kinetic_energy = ds2["kinetic_energy_func"][:]
   magnetic_energy = ds2["magnetic_energy_func"][:]
  potential_energy = ds2["potential_energy_func"][:]
-     total_energy = ds2["total_energy_func"][:]
+     total_energy = ds2["total_energy_func"][:] .* 1000
 
 close(ds2)
+
+
+initial_total_energy = first(total_energy)
+deviation_total_energy = (total_energy .- initial_total_energy)
 
 f = Figure()
 
@@ -137,13 +142,7 @@ lines(f[1, 2], t, magnetic_energy; linewidth = 4, label = "magnetic energy", tit
 axislegend(labelsize = 10, framevisible = false, position = :lt)
 lines(f[2, 1], t, potential_energy; linewidth = 4, label = "potential energy", title = "potential energy", color = "green")
 axislegend(labelsize = 10, framevisible = false, position = :rb)
-lines(f[2, 2], t, total_energy; linewidth = 4, label = "total energy", title = "total energy", color = "black")
+lines(f[2, 2], t, deviation_total_energy; linewidth = 4, label = "total energy", title = "total energy (scaled by 1000)", color = "black")
 axislegend(labelsize = 10, framevisible = false, position = :lt)
 
 save("energy_plot.png", f)
-
-final_total_energy = last(total_energy)
-initial_total_energy = first(total_energy)
-relative_energy_error = abs(final_total_energy - initial_total_energy)/initial_total_energy
-
-@info "Percentage difference in total energy is $(relative_energy_error * 100)%"
