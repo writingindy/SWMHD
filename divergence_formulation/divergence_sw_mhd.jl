@@ -5,7 +5,7 @@ using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using CairoMakie, Statistics, JLD2, Printf, NCDatasets
 
-include("test_functions.jl")
+include("sw_mhd_divergence_functions.jl")
 
 Lx, Ly = 10, 10
 Nx, Ny = 64, 64
