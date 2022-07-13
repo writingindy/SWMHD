@@ -8,16 +8,18 @@ using CairoMakie, Statistics, JLD2, Printf, NCDatasets
 include("sw_mhd_jacobian_functions.jl")
 
 Lx, Ly = 10, 10
-Nx, Ny = 128, 128
+Nx, Ny = 64, 64
 
 
 grid = RectilinearGrid(size = (Nx, Ny), 
                           x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), 
-                   topology = (Periodic, Bounded, Flat))
+                   topology = (Periodic, Periodic, Flat))
 
-using Oceananigans.TurbulenceClosures
+#north_bcs = 
+#A_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(-0.05), south = GradientBoundaryCondition(-0.05))
 
 model = ShallowWaterModel(grid = grid,
+                          #boundary_conditions = (A = A_bcs, ),
                           timestepper = :RungeKutta3,
                           momentum_advection = WENO5(vector_invariant = VelocityStencil()),
                           mass_advection = WENO5(),
@@ -31,12 +33,13 @@ model = ShallowWaterModel(grid = grid,
                           )
 
 
-Aᵢ(x, y, z) = -0.05*y
+Aᵢ(x, y, z) = 0.5*abs(y)
 #Aᵢ(x, y, z) = 0.1*exp(-((x - 0.5)^2 + y^2)) - 0.1*exp(-((x + 0.5)^2 + y^2))
-uᵢ(x, y, z) = y*exp(-(x^2 + y^2))
-vᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
-set!(model, u = uᵢ, v = vᵢ, h = 1, A = Aᵢ)
-simulation = Simulation(model, Δt = 0.01, stop_time = 1.0)
+hᵢ(x, y, z) = 1
+uᵢ(x, y, z) = 5*y*exp(-(x^2 + y^2))
+vᵢ(x, y, z) = -5*x*exp(-(x^2 + y^2))
+set!(model, u = uᵢ, v = vᵢ, h = hᵢ, A = Aᵢ)
+simulation = Simulation(model, Δt = 0.01, stop_time = 30.0)
 
 
 start_time = [time_ns()]
@@ -70,8 +73,8 @@ compute!(s)
 
 kinetic_energy_func(args...) = mean((1/2)*h*(u^2 + v^2))*Lx*Ly
 magnetic_energy_func(args...) = mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly
-potential_energy_func(args...) = mean((1/2)*model.gravitational_acceleration*h^2)*Lx*Ly
-total_energy_func(args...) = mean((1/2)*h*(u^2 + v^2))*Lx*Ly + mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly + mean((1/2)*model.gravitational_acceleration*h^2)*Lx*Ly
+potential_energy_func(args...) = mean((1/2)*model.gravitational_acceleration*((h-hᵢ)^2))*Lx*Ly
+total_energy_func(args...) = mean((1/2)*h*(u^2 + v^2))*Lx*Ly + mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly + mean((1/2)*model.gravitational_acceleration*((h-hᵢ)^2))*Lx*Ly
 
 
 filename = "SW_MHD_adjustment"
@@ -139,18 +142,22 @@ close(ds2)
 
 
 initial_total_energy = first(total_energy)
-deviation_total_energy = (total_energy .- initial_total_energy)
+deviation_total_energy = abs.(total_energy .- initial_total_energy) .* 100
 
 f = Figure()
 
+Axis(f[1, 1], title = "kinetic energy")
+lines!(t, kinetic_energy; linewidth = 4, color = "red")
 
-lines(f[1, 1], t, kinetic_energy; linewidth = 4, label = "kinetic energy", title = "kinetic energy", color = "red")
-axislegend(labelsize = 10, framevisible = false)
-lines(f[1, 2], t, magnetic_energy; linewidth = 4, label = "magnetic energy", title = "magnetic energy", color = "blue")
-axislegend(labelsize = 10, framevisible = false, position = :lt)
-lines(f[2, 1], t, potential_energy; linewidth = 4, label = "potential energy", title = "potential energy", color = "green")
-axislegend(labelsize = 10, framevisible = false, position = :rb)
-lines(f[2, 2], t, deviation_total_energy; linewidth = 4, label = "deviation in total energy", title = "total energy (scaled by 1000)", color = "black")
-axislegend(labelsize = 10, framevisible = false, position = :lt)
+Axis(f[1, 2], title = "magnetic energy")
+lines!(t, magnetic_energy; linewidth = 4, color = "blue")
+
+Axis(f[2, 1], title = "potential energy")
+lines!(t, potential_energy; linewidth = 4, color = "green")
+
+Axis(f[2, 2], title = "relative energy error (%)")
+lines!(t, deviation_total_energy; linewidth = 4, color = "black")
+
+Label(f[0, :], "64x64 Two_Gaussians_Low_B: Energy Plots", textsize = 20)
 
 save("energy_plot.png", f)

@@ -5,7 +5,7 @@ using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using CairoMakie, Statistics, JLD2, Printf, NCDatasets
 
-include("conservative_advection_functions.jl")
+include("test_functions.jl")
 
 Lx, Ly = 10, 10
 Nx, Ny = 64, 64
@@ -14,8 +14,12 @@ grid = RectilinearGrid(size = (Nx, Ny),
                           x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), 
                    topology = (Periodic, Bounded, Flat))
 
+
+A_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(-0.05), south = GradientBoundaryCondition(-0.05))
+
 model = ShallowWaterModel(grid = grid,
                           timestepper = :RungeKutta3,
+                          boundary_conditions = (A = A_bcs, ),
                           momentum_advection = WENO5(),
                           mass_advection = WENO5(),
                           tracer_advection = WENO5(),
@@ -33,7 +37,7 @@ hᵢ(x, y, z) = 1
 uhᵢ(x, y, z) = y*exp(-(x^2 + y^2))
 vhᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
 set!(model, uh = uhᵢ, vh = vhᵢ, h = hᵢ, A = Aᵢ)
-simulation = Simulation(model, Δt = 0.01, stop_time = 25)
+simulation = Simulation(model, Δt = 0.01, stop_time = 15)
 
 start_time = [time_ns()]
 function progress(sim)
@@ -58,18 +62,21 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 uh, vh, h = model.solution
+u = uh / h
+v = vh / h 
 s = sqrt(u^2 + v^2)
 A = model.tracers.A
 hB_x = -∂y(A)
 hB_y = ∂x(A)
-kinetic_energy_func(args...) = mean((1/2)*h*(u^2 + v^2))*Lx*Ly
-magnetic_energy_func(args...) = mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly*(1/2)
-potential_energy_func(args...) = mean((1/2)*model.gravitational_acceleration*h^2)*Lx*Ly
-total_energy_func(args...) = mean((1/2)*h*(u^2 + v^2))*Lx*Ly + mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly*(1/2) + mean((1/2)*model.gravitational_acceleration*h^2)*Lx*Ly
+kinetic_energy_func(args...) = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly
+magnetic_energy_func(args...) = mean((1/2)*(1/h)*(hB_x^2 + hB_y^2))*Lx*Ly
+potential_energy_func(args...) = mean((1/2)*model.gravitational_acceleration*(h - hᵢ)^2)*Lx*Ly
+total_energy_func(args...) = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly + mean((1/2)*(1/h)*(hB_x^2 + hB_y^2))*Lx*Ly + mean((1/2)*model.gravitational_acceleration*(h - hᵢ)^2)*Lx*Ly
 compute!(s)
 
 filename = "SW_MHD_adjustment"
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.tracers.A, s),
+                                                      with_halos = true,
                                                       schedule = TimeInterval(0.1),
                                                       filename = filename * ".jld2",
                                                       overwrite_existing = true)
@@ -77,6 +84,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.
 energies_filename = joinpath(@__DIR__, "energies.nc")
 simulation.output_writers[:energies] = NetCDFOutputWriter(model, (; kinetic_energy_func, magnetic_energy_func, potential_energy_func, total_energy_func),
                                                         filename = energies_filename,
+                                                        with_halos = true,
                                                         array_type = Array{Float64},
                                                         schedule = IterationInterval(1),
                                                         dimensions = (; kinetic_energy_func = (), magnetic_energy_func = (), potential_energy_func = (), total_energy_func = ()),
@@ -125,24 +133,28 @@ ds2 = NCDataset(simulation.output_writers[:energies].filepath, "r")
    kinetic_energy = ds2["kinetic_energy_func"][:]
   magnetic_energy = ds2["magnetic_energy_func"][:]
  potential_energy = ds2["potential_energy_func"][:]
-     total_energy = ds2["total_energy_func"][:] .* 1000
+     total_energy = ds2["total_energy_func"][:]
 
 close(ds2)
 
 
 initial_total_energy = first(total_energy)
-deviation_total_energy = (total_energy .- initial_total_energy)
+deviation_total_energy = abs.(total_energy .- initial_total_energy) .* 100
 
 f = Figure()
 
+Axis(f[1, 1], title = "kinetic energy")
+lines!(t, kinetic_energy; linewidth = 4, color = "red")
 
-lines(f[1, 1], t, kinetic_energy; linewidth = 4, label = "kinetic energy", title = "kinetic energy", color = "red")
-axislegend(labelsize = 10, framevisible = false)
-lines(f[1, 2], t, magnetic_energy; linewidth = 4, label = "magnetic energy", title = "magnetic energy", color = "blue")
-axislegend(labelsize = 10, framevisible = false, position = :lt)
-lines(f[2, 1], t, potential_energy; linewidth = 4, label = "potential energy", title = "potential energy", color = "green")
-axislegend(labelsize = 10, framevisible = false, position = :rb)
-lines(f[2, 2], t, deviation_total_energy; linewidth = 4, label = "total energy", title = "total energy (scaled by 1000)", color = "black")
-axislegend(labelsize = 10, framevisible = false, position = :lt)
+Axis(f[1, 2], title = "magnetic energy")
+lines!(t, magnetic_energy; linewidth = 4, color = "blue")
+
+Axis(f[2, 1], title = "potential energy")
+lines!(t, potential_energy; linewidth = 4, color = "green")
+
+Axis(f[2, 2], title = "relative energy error (%)")
+lines!(t, deviation_total_energy; linewidth = 4, color = "black")
+
+Label(f[0, :], "64x64 Two_Gaussians_Low_B: Energy Plots", textsize = 20)
 
 save("energy_plot.png", f)
