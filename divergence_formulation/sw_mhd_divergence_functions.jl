@@ -39,12 +39,15 @@
 
     ũ  =    symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, U, args...)
     
-    if i == 1 || i >= grid.Nx || j == 1 || j >= grid.Ny 
+    if topology(grid, 1) == Bounded && i == (grid.Nx + 1)
         uᴸ = _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
+        uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
+    elseif topology(grid, 1) == Bounded && i == grid.Nx
+        uᴸ = left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
         uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
     else
-        uᴸ =  left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
-        uᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
+        uᴸ = left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
+        uᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
     end
 
     return Axᶜᶜᶜ(i, j, k, grid) * upwind_biased_product(ũ, uᴸ, uᴿ)
@@ -54,8 +57,11 @@ end
 
     ṽ  =    symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, V, args...)
 
-    if i == 1 || i >= grid.Nx || j == 1 || j >= grid.Ny  
+    if topology(grid, 2) == Bounded && j == 1  
         uᴸ = _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
+        uᴿ = right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
+    elseif topology(grid, 2) == Bounded && j == (grid.Ny + 1)
+        uᴸ =  left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
         uᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
     else
         uᴸ =  left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
@@ -69,16 +75,17 @@ end
 
     ũ  =    symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, U, args...)
 
-    if i == 1 || i >= grid.Nx || j == 1 || j >= grid.Ny 
+    if topology(grid, 1) == Bounded && i == 1
         vᴸ = _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
+        vᴿ = right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
+    elseif topology(grid, 1) == Bounded && i == (grid.Nx + 1)
+        vᴸ = left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
         vᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
     else
         vᴸ =  left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
         vᴿ = right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
     end
     
-    
- 
     return Axᶠᶠᶜ(i, j, k, grid) * upwind_biased_product(ũ, vᴸ, vᴿ)
 end
 
@@ -86,13 +93,15 @@ end
 
     ṽ  =    symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, V, args...)
     
-
-    if i == 1 || i >= grid.Nx || j == 1 || j >= grid.Ny 
-        vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
+    if topology(grid, 2) == Bounded && j == (grid.Ny + 1)
         vᴸ = _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
+        vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
+    elseif topology(grid, 2) == Bounded && j == grid.Ny
+        vᴸ = left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
+        vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
     else
+        vᴸ = left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
         vᴿ = right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
-        vᴸ =  left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
     end
 
     return Ayᶜᶜᶜ(i, j, k, grid) * upwind_biased_product(ṽ, vᴸ, vᴿ)
