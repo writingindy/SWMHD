@@ -2,24 +2,23 @@ using Oceananigans
 using Oceananigans.Models.ShallowWaterModels: ConservativeFormulation
 using Oceananigans.Advection
 using Oceananigans.Operators
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, topology
 using CairoMakie, Statistics, JLD2, Printf, NCDatasets
 
 include("sw_mhd_divergence_functions.jl")
 
 Lx, Ly = 10, 10
 Nx, Ny = 64, 64
-
 grid = RectilinearGrid(size = (Nx, Ny), 
-                          x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), 
-                   topology = (Periodic, Bounded, Flat))
+                           x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2),
+                   topology = (Periodic, Periodic, Flat))
 
 
-A_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(-0.05), south = GradientBoundaryCondition(-0.05))
+#A_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(-0.05), south = GradientBoundaryCondition(-0.05))
 
 model = ShallowWaterModel(grid = grid,
                           timestepper = :RungeKutta3,
-                          boundary_conditions = (A = A_bcs, ),
+                          #boundary_conditions = (A = A_bcs, ),
                           momentum_advection = WENO5(),
                           mass_advection = WENO5(),
                           tracer_advection = WENO5(),
@@ -31,13 +30,13 @@ model = ShallowWaterModel(grid = grid,
                           formulation = ConservativeFormulation()
                           )
 
-#Aᵢ(x, y, z) = 0.1*exp(-((x - 0.5)^2 + y^2)) - 0.1*exp(-((x + 0.5)^2 + y^2))
-Aᵢ(x, y, z) = -0.05*y
+Aᵢ(x, y, z) = 0.5*exp(-((x - 0.5)^2 + y^2)) - 0.5*exp(-((x + 0.5)^2 + y^2))
+#Aᵢ(x, y, z) = -0.05*y
 hᵢ(x, y, z) = 1
-uhᵢ(x, y, z) = y*exp(-(x^2 + y^2))
-vhᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
-set!(model, uh = uhᵢ, vh = vhᵢ, h = hᵢ, A = Aᵢ)
-simulation = Simulation(model, Δt = 0.01, stop_time = 15)
+#uhᵢ(x, y, z) = y*exp(-(x^2 + y^2))
+#vhᵢ(x, y, z) = -x*exp(-(x^2 + y^2))
+set!(model,#= uh = uhᵢ, vh = vhᵢ,=# h = hᵢ, A = Aᵢ)
+simulation = Simulation(model, Δt = 0.01, stop_time = 45)
 
 start_time = [time_ns()]
 function progress(sim)
@@ -66,12 +65,13 @@ u = uh / h
 v = vh / h 
 s = sqrt(u^2 + v^2)
 A = model.tracers.A
-hB_x = -∂y(A)
-hB_y = ∂x(A)
+B_x = -∂y(A)/h
+B_y = ∂x(A)/h
+
 kinetic_energy_func(args...) = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly
-magnetic_energy_func(args...) = mean((1/2)*(1/h)*(hB_x^2 + hB_y^2))*Lx*Ly
+magnetic_energy_func(args...) = mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly
 potential_energy_func(args...) = mean((1/2)*model.gravitational_acceleration*(h - hᵢ)^2)*Lx*Ly
-total_energy_func(args...) = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly + mean((1/2)*(1/h)*(hB_x^2 + hB_y^2))*Lx*Ly + mean((1/2)*model.gravitational_acceleration*(h - hᵢ)^2)*Lx*Ly
+total_energy_func(args...) = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly + mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly + mean((1/2)*model.gravitational_acceleration*(h - hᵢ)^2)*Lx*Ly
 compute!(s)
 
 filename = "SW_MHD_adjustment"
@@ -155,6 +155,6 @@ lines!(t, potential_energy; linewidth = 4, color = "green")
 Axis(f[2, 2], title = "relative energy error (%)")
 lines!(t, deviation_total_energy; linewidth = 4, color = "black")
 
-Label(f[0, :], "64x64 Two_Gaussians_Low_B: Energy Plots", textsize = 20)
+Label(f[0, :], "128x128 Two_Gaussians_Low_B: Energy Plots", textsize = 20)
 
 save("energy_plot.png", f)

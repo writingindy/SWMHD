@@ -38,13 +38,19 @@
 @inline function advective_lorentz_flux_hBx_bx(i, j, k, grid, U, u, args...)
 
     ũ  =    symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, U, args...)
-    
-    if topology(grid, 1) == Bounded && i == (grid.Nx + 1)
-        uᴸ = _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
+
+    if topology(grid, 1) == Bounded && i == 0
+        uᴸ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
         uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
-    elseif topology(grid, 1) == Bounded && i == grid.Nx
+    elseif topology(grid, 1) == Bounded && i == 1
+        uᴸ = _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
+        uᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
+    elseif topology(grid, 1) == Bounded && i == (grid.Nx -1)
         uᴸ = left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
         uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
+    elseif topology(grid, 1) == Bounded && i == grid.Nx 
+        uᴸ = _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
+        uᴿ = _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
     else
         uᴸ = left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
         uᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
@@ -58,11 +64,17 @@ end
     ṽ  =    symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, V, args...)
 
     if topology(grid, 2) == Bounded && j == 1  
+        uᴸ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
+        uᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
+    elseif topology(grid, 2) == Bounded && j == 2
         uᴸ = _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
         uᴿ = right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
-    elseif topology(grid, 2) == Bounded && j == (grid.Ny + 1)
+    elseif topology(grid, 2) == Bounded && j == grid.Ny
         uᴸ =  left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
         uᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
+    elseif topology(grid, 2) == Bounded && j == (grid.Ny + 1)
+        uᴸ = _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
+        uᴿ = _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
     else
         uᴸ =  left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
         uᴿ = right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, u, args...)
@@ -76,11 +88,17 @@ end
     ũ  =    symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, U, args...)
 
     if topology(grid, 1) == Bounded && i == 1
+        vᴸ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
+        vᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
+    elseif topology(grid, 1) == Bounded && i == 2
         vᴸ = _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
         vᴿ = right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
-    elseif topology(grid, 1) == Bounded && i == (grid.Nx + 1)
+    elseif topology(grid, 1) == Bounded && i == grid.Nx
         vᴸ = left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
         vᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
+    elseif topology(grid, 1) == Bounded && i == (grid.Nx + 1)
+        vᴸ = _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
+        vᴿ = _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
     else
         vᴸ =  left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
         vᴿ = right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, v, args...)
@@ -92,13 +110,19 @@ end
 @inline function advective_lorentz_flux_hBy_by(i, j, k, grid, V, v, args...)
 
     ṽ  =    symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, V, args...)
-    
-    if topology(grid, 2) == Bounded && j == (grid.Ny + 1)
-        vᴸ = _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
+
+    if topology(grid, 2) == Bounded && j == 0
+        vᴸ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
         vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
-    elseif topology(grid, 2) == Bounded && j == grid.Ny
+    elseif topology(grid, 2) == Bounded && j == 1
+        vᴸ = _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
+        vᴿ = right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
+    elseif topology(grid, 2) == Bounded && j == (grid.Ny - 1)
         vᴸ = left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
         vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
+    elseif topology(grid, 2) == Bounded && j == grid.Ny
+        vᴸ = _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
+        vᴿ = _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
     else
         vᴸ = left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
         vᴿ = right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v, args...)
