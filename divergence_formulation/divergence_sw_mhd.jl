@@ -114,9 +114,11 @@ title_A = @lift(@sprintf("Magnetic potential at time = %s", string(round(times[$
 title_s = @lift(@sprintf("Speed at time = %s", string(round(times[$iter], digits = 2))))
 fig = Figure(resolution = (800, 400))
 ax_A = Axis(fig[1,1], xlabel = "x", ylabel = "y", title=title_A)
-ax_s = Axis(fig[1,2], xlabel = "x", ylabel = "y", title=title_s)
-heatmap!(ax_A, x, y, A, colormap=:deep)
-heatmap!(ax_s, x, y, s, colormap=:deep)
+ax_s = Axis(fig[1,3], xlabel = "x", ylabel = "y", title=title_s)
+hm1 = heatmap!(ax_A, x, y, A, colormap=:deep, colorrange = (minimum(A_timeseries.data), maximum(A_timeseries.data)))
+Colorbar(fig[1,2], hm1)
+hm2 = heatmap!(ax_s, x, y, s, colormap=:deep, colorrange = (minimum(s_timeseries.data), maximum(s_timeseries.data)))
+Colorbar(fig[1,4], hm2)
 
 frames = 2:length(times)
 
