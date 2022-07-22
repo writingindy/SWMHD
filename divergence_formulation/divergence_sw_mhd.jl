@@ -14,7 +14,8 @@ grid = RectilinearGrid(size = (Nx, Ny),
                    topology = (Periodic, Periodic, Flat))
 
 
-#A_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(-0.05), south = GradientBoundaryCondition(-0.05))
+#A_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(-0.05), 
+#                                south = GradientBoundaryCondition(-0.05))
 
 model = ShallowWaterModel(grid = grid,
                           timestepper = :RungeKutta3,
@@ -43,11 +44,12 @@ function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
     uh = sim.model.solution.uh
-    h = sim.model.solution.h
-    u = uh / h
-    A = sim.model.tracers.A 
+    h  = sim.model.solution.h
+    u  = uh / h
+    A  = sim.model.tracers.A 
 
-    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(A): %.2e ms⁻¹, min(h): %.2e ms⁻¹, wall time: %s",
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(A): %.2e ms⁻¹, 
+                    min(h): %.2e ms⁻¹, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration, 
                     maximum(abs, u), maximum(abs, A), minimum(h),
@@ -61,22 +63,24 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 uh, vh, h = model.solution
+A = model.tracers.A
 u = uh / h
 v = vh / h 
 s = sqrt(u^2 + v^2)
-A = model.tracers.A
 B_x = -∂y(A)/h
-B_y = ∂x(A)/h
+B_y =  ∂x(A)/h
 
-kinetic_energy_func(args...) = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly
-magnetic_energy_func(args...) = mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly
+kinetic_energy_func(args...)   = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly
+magnetic_energy_func(args...)  = mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly
 potential_energy_func(args...) = mean((1/2)*model.gravitational_acceleration*(h - hᵢ)^2)*Lx*Ly
-total_energy_func(args...) = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly + mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly + mean((1/2)*model.gravitational_acceleration*(h - hᵢ)^2)*Lx*Ly
+total_energy_func(args...)     = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly 
+                               + mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly 
+                               + mean((1/2)*model.gravitational_acceleration*(h - hᵢ)^2)*Lx*Ly
 compute!(s)
 
 filename = "SW_MHD_adjustment"
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.tracers.A, s),
-                                                      with_halos = true,
+                                                      with_halos = true,                           # Are you sure you want to save the halos?
                                                       schedule = TimeInterval(0.1),
                                                       filename = filename * ".jld2",
                                                       overwrite_existing = true)
@@ -87,7 +91,8 @@ simulation.output_writers[:energies] = NetCDFOutputWriter(model, (; kinetic_ener
                                                         with_halos = true,
                                                         array_type = Array{Float64},
                                                         schedule = IterationInterval(1),
-                                                        dimensions = (; kinetic_energy_func = (), magnetic_energy_func = (), potential_energy_func = (), total_energy_func = ()),
+                                                        dimensions = (; kinetic_energy_func = (), magnetic_energy_func = (), 
+                                                                        potential_energy_func = (), total_energy_func = ()),
                                                         overwrite_existing = true)
 
 
@@ -100,6 +105,7 @@ sim_time = prettytime(sim_end_time - sim_start_time)
 
 output_prefix = "SW_MHD_adjustment"
 
+# FJP: instead of plotting the speed, can we plot the vorticity?
 x, y, z = nodes((Center, Center, Center), grid)
 s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
 A_timeseries = FieldTimeSeries(filename * ".jld2", "A")
@@ -114,11 +120,9 @@ title_A = @lift(@sprintf("Magnetic potential at time = %s", string(round(times[$
 title_s = @lift(@sprintf("Speed at time = %s", string(round(times[$iter], digits = 2))))
 fig = Figure(resolution = (800, 400))
 ax_A = Axis(fig[1,1], xlabel = "x", ylabel = "y", title=title_A)
-ax_s = Axis(fig[1,3], xlabel = "x", ylabel = "y", title=title_s)
-hm1 = heatmap!(ax_A, x, y, A, colormap=:deep, colorrange = (minimum(A_timeseries.data), maximum(A_timeseries.data)))
-Colorbar(fig[1,2], hm1)
-hm2 = heatmap!(ax_s, x, y, s, colormap=:deep, colorrange = (minimum(s_timeseries.data), maximum(s_timeseries.data)))
-Colorbar(fig[1,4], hm2)
+ax_s = Axis(fig[1,2], xlabel = "x", ylabel = "y", title=title_s)
+heatmap!(ax_A, x, y, A, colormap=:deep)
+heatmap!(ax_s, x, y, s, colormap=:deep)
 
 frames = 2:length(times)
 
