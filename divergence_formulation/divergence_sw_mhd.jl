@@ -65,8 +65,8 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 uh, vh, h = model.solution
 A = model.tracers.A
 u = uh / h
-v = vh / h 
-s = sqrt(u^2 + v^2)
+v = vh / h
+ω = ∂x(v) - ∂y(u) 
 B_x = -∂y(A)/h
 B_y =  ∂x(A)/h
 
@@ -76,11 +76,10 @@ potential_energy_func(args...) = mean((1/2)*model.gravitational_acceleration*(h 
 total_energy_func(args...)     = mean((1/2)*(1/h)*(uh^2 + vh^2))*Lx*Ly 
                                + mean((1/2)*h*(B_x^2 + B_y^2))*Lx*Ly 
                                + mean((1/2)*model.gravitational_acceleration*(h - hᵢ)^2)*Lx*Ly
-compute!(s)
+compute!(ω)
 
 filename = "SW_MHD_adjustment"
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.tracers.A, s),
-                                                      with_halos = true,                           # Are you sure you want to save the halos?
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.tracers.A, ω),
                                                       schedule = TimeInterval(0.1),
                                                       filename = filename * ".jld2",
                                                       overwrite_existing = true)
@@ -88,7 +87,6 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, A = model.
 energies_filename = joinpath(@__DIR__, "energies.nc")
 simulation.output_writers[:energies] = NetCDFOutputWriter(model, (; kinetic_energy_func, magnetic_energy_func, potential_energy_func, total_energy_func),
                                                         filename = energies_filename,
-                                                        with_halos = true,
                                                         array_type = Array{Float64},
                                                         schedule = IterationInterval(1),
                                                         dimensions = (; kinetic_energy_func = (), magnetic_energy_func = (), 
@@ -105,24 +103,25 @@ sim_time = prettytime(sim_end_time - sim_start_time)
 
 output_prefix = "SW_MHD_adjustment"
 
-# FJP: instead of plotting the speed, can we plot the vorticity?
 x, y, z = nodes((Center, Center, Center), grid)
-s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
+ω_timeseries = FieldTimeSeries(filename * ".jld2", "ω")
 A_timeseries = FieldTimeSeries(filename * ".jld2", "A")
-times = s_timeseries.times
+times = ω_timeseries.times
 
 @info "Making a movie of the magnetic potential function A..."
 
 iter = Observable(2)
 A = @lift interior(A_timeseries[$iter], :, :, 1)
-s = @lift interior(s_timeseries[$iter], :, :, 1)
+ω = @lift interior(ω_timeseries[$iter], :, :, 1)
 title_A = @lift(@sprintf("Magnetic potential at time = %s", string(round(times[$iter], digits = 2))))
-title_s = @lift(@sprintf("Speed at time = %s", string(round(times[$iter], digits = 2))))
+title_ω = @lift(@sprintf("Vorticity at time = %s", string(round(times[$iter], digits = 2))))
 fig = Figure(resolution = (800, 400))
 ax_A = Axis(fig[1,1], xlabel = "x", ylabel = "y", title=title_A)
-ax_s = Axis(fig[1,2], xlabel = "x", ylabel = "y", title=title_s)
-heatmap!(ax_A, x, y, A, colormap=:deep)
-heatmap!(ax_s, x, y, s, colormap=:deep)
+ax_ω = Axis(fig[1,3], xlabel = "x", ylabel = "y", title=title_ω)
+hm1 = heatmap!(ax_A, x, y, A, colormap=:deep, colorrange = (minimum(A_timeseries.data), maximum(A_timeseries.data)))
+Colorbar(fig[1,2], hm1)
+hm2 = heatmap!(ax_ω, x, y, ω, colormap=:deep, colorrange = (minimum(ω_timeseries.data), maximum(ω_timeseries.data)))
+Colorbar(fig[1,4], hm2)
 
 frames = 2:length(times)
 
