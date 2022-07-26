@@ -39,16 +39,16 @@
 
     ũ  =    symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, U, args...)
 
-    if topology(grid, 1) == Bounded && i == 0                            # But we don't do any advection at i==0?
+    if topology(grid, 1) == Bounded && i == 0                            
         uᴸ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
         uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
-    elseif topology(grid, 1) == Bounded && i == 1                        # I think we need to use right for the left at i = 1
+    elseif topology(grid, 1) == Bounded && i == 1                        
         uᴸ = _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
         uᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
-    elseif topology(grid, 1) == Bounded && i == (grid.Nx -1)             # I'm not sure why this is a concern.
+    elseif topology(grid, 1) == Bounded && i == (grid.Nx -1)             
         uᴸ = left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
         uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...)
-    elseif topology(grid, 1) == Bounded && i == grid.Nx                  # Don't we need to worry about Nx+1?
+    elseif topology(grid, 1) == Bounded && i == grid.Nx                  
         uᴸ = _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
         uᴿ = _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, u, args...) 
     else
