@@ -52,10 +52,6 @@ set!(model, uh = ū̄h, h = h̄)
 
 uh, vh, h = model.solution
 
-# Build velocities
-u = uh / h
-v = vh / h
-
 set!(model, uh = uhⁱ)
 
 kinetic_energy_func   = Integral((1/2)*(1/h)*(uh^2 + vh^2))
@@ -98,9 +94,6 @@ f = Figure()
 
 Axis(f[1, 1], title = "kinetic energy")
 lines!(t, kinetic_energy; linewidth = 4, color = "red")
-
-Axis(f[1, 2], title = "magnetic energy")
-lines!(t, magnetic_energy; linewidth = 4, color = "blue")
 
 Axis(f[2, 1], title = "potential energy")
 lines!(t, potential_energy; linewidth = 4, color = "green")
