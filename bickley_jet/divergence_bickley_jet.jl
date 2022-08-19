@@ -101,6 +101,6 @@ lines!(t, potential_energy; linewidth = 4, color = "green")
 Axis(f[2, 2], title = "relative energy error (%)")
 lines!(t, deviation_total_energy; linewidth = 4, color = "black")
 
-Label(f[0, :], "512x512 Bickley Jet: Energy Plots", textsize = 20)
+Label(f[0, :], "128x128 Bickley Jet: Energy Plots", textsize = 20)
 
 save("divergence_bickley_jet_energy_plot.png", f)
